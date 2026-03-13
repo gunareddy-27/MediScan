@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Doctor Recommendations - MediScan</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
+</head>
+
+<body>
+    <div class="background-blobs">
+        <div class="blob blob-1"></div>
+        <div class="blob blob-2"></div>
+    </div>
+
+    <nav>
+        <div class="logo">Medi<span>Scan</span></div>
+        <div class="nav-links">
+            <a href="/">Home</a>
+            <a href="/dashboard">Dashboard</a>
+            <a href="/doctors">Doctors</a>
+        </div>
+    </nav>
+
+    <main>
+        <section class="hero">
+            <h1>Recommended <span>Specialists</span></h1>
+            <p>Based on your predicted condition: <strong>{{ disease }}</strong></p>
+        </section>
+
+        <section class="doctors-grid">
+            {% for doctor in doctors %}
+            <div class="doctor-card glass {% if doctor.is_primary %}primary-match{% endif %}" {% if doctor.is_primary %}id="primary-specialist"{% endif %}>
+                {% if doctor.is_primary %}
+                <div class="match-badge">⭐ Recommended Match</div>
+                {% endif %}
+                <div class="doc-icon">👨‍⚕️</div>
+                <h3>{{ doctor.name }}</h3>
+                <p class="spec">{{ doctor.specialization }}</p>
+                <p class="contact">Contact: {{ doctor.contact }}</p>
+                <div class="action-buttons" style="display: flex; flex-direction: column; gap: 0.8rem;">
+                    <button class="btn-primary">Book Appointment</button>
+                    <a href="https://wa.me/{{ doctor.whatsapp }}?text=Hello%20{{ doctor.name }},%20I%20used%20MediScan%20AI%20and%20was%20diagnosed%20with%20{{ disease }}.%20I%20would%20like%20to%20consult%20you." 
+                       target="_blank" 
+                       class="btn-whatsapp">
+                       💬 Message on WhatsApp
+                    </a>
+                </div>
+            </div>
+            {% endfor %}
+        </section>
+
+        <script>
+            // 🚀 Auto-detect and move to primary specialist on load
+            window.onload = () => {
+                const primary = document.getElementById('primary-specialist');
+                if (primary) {
+                    setTimeout(() => {
+                        primary.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        primary.style.transform = 'scale(1.05)';
+                        setTimeout(() => primary.style.transform = '', 1000);
+                    }, 500);
+                }
+            };
+        </script>
+    </main>
+
+    <style>
+        .doctors-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 2rem;
+            margin-top: 3rem;
+        }
+
+        .doctor-card {
+            text-align: center;
+            padding: 2rem;
+        }
+
+        .doc-icon {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+        }
+
+        .spec {
+            color: var(--secondary);
+            font-weight: 600;
+            margin-bottom: 1rem;
+        }
+
+        .contact {
+            color: var(--text-gray);
+            margin-bottom: 2rem;
+        }
+    </style>
+</body>
+
+</html>

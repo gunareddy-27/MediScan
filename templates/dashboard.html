@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Health Dashboard - MediScan</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
+</head>
+
+<body>
+    <div class="background-blobs">
+        <div class="blob blob-1"></div>
+        <div class="blob blob-2"></div>
+    </div>
+
+    <nav>
+        <div class="logo">Medi<span>Scan</span></div>
+        <div class="nav-links">
+            <a href="/">Home</a>
+            <a href="/dashboard">Dashboard</a>
+            <a href="/doctors">Doctors</a>
+        </div>
+    </nav>
+
+    <main>
+        <section class="hero">
+            <h1>Health <span>Dashboard</span></h1>
+            <p>Track your health history and AI-powered diagnostic trends.</p>
+        </section>
+
+        <section class="dashboard-grid">
+            <div class="stat-card glass">
+                <h3>Health Trends</h3>
+                <canvas id="healthChart"></canvas>
+            </div>
+            
+            <div class="stat-actions glass">
+                <h3>Insights</h3>
+                <div class="insight-item">
+                    <span class="label">Primary Condition:</span>
+                    <span id="top-disease">Loading...</span>
+                </div>
+                <div class="insight-item">
+                    <span class="label">Last Checkup:</span>
+                    <span id="last-date">---</span>
+                </div>
+                <hr>
+                <div class="quick-actions">
+                    <a href="/" class="btn-primary">New AI Checkup</a>
+                </div>
+            </div>
+        </section>
+
+        <section class="history-section glass">
+            <h2>Medical History</h2>
+            <div class="table-scroll">
+                <table class="history-table">
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Symptoms</th>
+                            <th>AI Prediction</th>
+                            <th>Confidence</th>
+                        </tr>
+                    </thead>
+                    <tbody id="history-body">
+                        <!-- Data injected by JS -->
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    </main>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', async () => {
+            try {
+                const response = await fetch('/dashboard_data');
+                const data = await response.json();
+                
+                if (data.length === 0) {
+                    document.getElementById('history-body').innerHTML = '<tr><td colspan="4">No history found. Start a checkup!</td></tr>';
+                    return;
+                }
+
+                // Populate Table
+                const body = document.getElementById('history-body');
+                data.reverse().forEach(row => {
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
+                        <td>${new Date(row.timestamp).toLocaleDateString()}</td>
+                        <td>${row.symptoms || '---'}</td>
+                        <td><strong>${row.disease}</strong></td>
+                        <td><span class="badge">${row.confidence || '---'}</span></td>
+                    `;
+                    body.appendChild(tr);
+                });
+
+                // Update Stats
+                document.getElementById('top-disease').innerText = data[0].disease;
+                document.getElementById('last-date').innerText = new Date(data[0].timestamp).toLocaleDateString();
+
+                // Initialize Chart
+                const ctx = document.getElementById('healthChart').getContext('2d');
+                new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: data.map(d => new Date(d.timestamp).toLocaleDateString()).slice(-7),
+                        datasets: [{
+                            label: 'Diagnosis Confidence',
+                            data: data.map(d => parseFloat(d.confidence) || 0).slice(-7),
+                            borderColor: '#3b82f6',
+                            tension: 0.4,
+                            fill: true,
+                            backgroundColor: 'rgba(59, 130, 246, 0.1)'
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        plugins: { legend: { display: false } },
+                        scales: { y: { beginAtZero: true, max: 100 } }
+                    }
+                });
+            } catch (e) {
+                console.error("Dashboard error:", e);
+            }
+        });
+    </script>
+
+    <style>
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 2rem;
+            margin-bottom: 3rem;
+        }
+
+        .stat-card, .stat-actions {
+            padding: 2rem;
+            border-radius: 20px;
+        }
+
+        .insight-item {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 1rem;
+            font-size: 0.95rem;
+        }
+
+        .stat-actions h3 { margin-bottom: 1.5rem; color: var(--text-gray); }
+        .label { color: var(--text-gray); }
+
+        .table-scroll { overflow-x: auto; }
+        .history-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 2rem;
+            text-align: left;
+        }
+
+        .history-table th {
+            padding: 1.2rem;
+            color: var(--text-gray);
+            border-bottom: 1px solid var(--glass-border);
+        }
+
+        .history-table td {
+            padding: 1.2rem;
+            border-bottom: 1px solid var(--glass-border);
+        }
+
+        .badge {
+            background: rgba(59, 130, 246, 0.1);
+            color: #3b82f6;
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-size: 0.8rem;
+            font-weight: 600;
+        }
+
+        @media (max-width: 900px) {
+            .dashboard-grid { grid-template-columns: 1fr; }
+        }
+    </style>
+</body>
+
+</html>
