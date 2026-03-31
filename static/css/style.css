@@ -1159,9 +1159,66 @@ textarea:focus {
 
 }
 
-/* ? Advanced Liquid Animations */
-.reveal { opacity: 0; transform: translateY(30px); transition: all 0.8s cubic-bezier(0.16, 1, 0.3, 1); }
-.reveal.active { opacity: 1; transform: translateY(0); }
+/* 📄 Report Analyzer AI Styles */
+.report-analysis-grid {
+    margin-top: 1rem;
+    border-top: 1px solid var(--glass-border);
+    padding-top: 1.5rem;
+}
+
+.report-vitals-list li {
+    background: rgba(255, 255, 255, 0.03);
+    padding: 0.8rem;
+    border-radius: 10px;
+    margin-bottom: 0.5rem;
+    border: 1px solid var(--glass-border);
+    font-size: 0.9rem;
+}
+
+.report-vitals-list strong {
+    color: var(--primary);
+}
+
+.ai-explanation h4, .extrated-vitals h4 {
+    font-size: 0.8rem;
+    color: var(--text-gray);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 1rem;
+}
+
+#report-explanations div {
+    background: rgba(79, 70, 229, 0.05);
+    padding: 1rem;
+    border-radius: 12px;
+    border-left: 3px solid var(--primary);
+    margin-bottom: 0.8rem;
+    font-size: 0.85rem;
+    line-height: 1.4;
+}
+
+#medicine-search-input:focus {
+    border-color: var(--secondary) !important;
+    background: rgba(16, 185, 129, 0.08) !important;
+}
+
+@media (max-width: 600px) {
+    .report-analysis-grid {
+        grid-template-columns: 1fr !important;
+    }
+}
+
+/* Animations */
+.reveal {
+    opacity: 0;
+    transform: translateY(20px);
+    transition: all 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.reveal.active {
+    opacity: 1;
+    transform: translateY(0);
+}
 
 @keyframes shimmer { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
 .shimmer-loading { background: linear-gradient(90deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0.05) 50%, rgba(255,255,255,0) 100%); background-size: 200% 100%; animation: shimmer 2s infinite; }

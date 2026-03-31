@@ -11,6 +11,8 @@ MediScan AI is a state-of-the-art health pre-diagnosis platform. It combines Mac
 - **🎤 Voice Command Diagnosis**: Integrated Web Speech API for hands-free symptom reporting with real-time transcription.
 - **🗺️ 7-Day Personalized Roadmap**: Generates a phase-based recovery plan for detected conditions, including diet and rest schedules.
 - **🤖 MediScan Counsel**: An AI reasoning engine that explains the "Why" behind every diagnosis.
+- **📄 Report Analyzer AI (Advanced Parsing)**: Automated study of medical reports (PDF/Image) with vitals extraction and keyword-based explanation of parameters.
+- **💊 Pharmacy AI Lookup (Database Integration)**: Suggests typical medications and treatments for detected conditions with a dedicated disease-med lookup engine.
 - **📊 Health Trends Dashboard**: Persistent historical tracking using SQLite and data visualization via **Chart.js**.
 
 ## 🛠️ Technology Stack

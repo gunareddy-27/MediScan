@@ -41,6 +41,7 @@
         <div class="logo">Medi<span>Scan</span></div>
         <div class="nav-links">
             <a href="/">Home</a>
+            <a href="/clot_detection" class="nav-clot-link">🩸 Clot Detection</a>
             <a href="/dashboard">Dashboard</a>
             <a href="/doctors">Doctors</a>
         </div>
@@ -74,7 +75,27 @@
                     <p class="input-hint">Upload a photo of a rash or skin concern for visual analysis.</p>
                     <div class="skin-upload-container">
                         <input type="file" id="skin-image" accept="image/*" style="display: none;">
-                        <button class="btn-secondary" onclick="document.getElementById('skin-image').click()">Upload Image</button>
+                        <button class="btn-secondary" onclick="document.getElementById('skin-image').click()">Upload Tissue/Skin</button>
+                    </div>
+                </div>
+
+                <!-- 📄 Report Analyzer Card -->
+                <div class="voice-diagnosis card">
+                    <h3>Report Analyzer AI</h3>
+                    <p class="input-hint">Upload your medical report (PDF/Image) for automated analysis and explanation.</p>
+                    <div class="skin-upload-container">
+                        <input type="file" id="report-file" accept=".pdf,image/*" style="display: none;">
+                        <button class="btn-secondary" style="background: var(--secondary);" onclick="document.getElementById('report-file').click()">Study Report</button>
+                    </div>
+                </div>
+
+                <!-- 💊 Medicine Search Card -->
+                <div class="voice-diagnosis card">
+                    <h3>Pharmacy AI Lookup</h3>
+                    <p class="input-hint">Search for medications and typical treatments for any condition.</p>
+                    <div class="search-box" style="margin-top: 10px;">
+                        <input type="text" id="medicine-search-input" placeholder="Enter disease name..." style="background: rgba(255,255,255,0.05); border: 1px solid var(--glass-border); border-radius: 5px; color: white; padding: 8px;">
+                        <button class="btn-sm btn-secondary" onclick="searchMedicines()" style="margin-top: 5px;">Lookup Meds</button>
                     </div>
                 </div>
 
@@ -236,6 +257,34 @@
                         <h3>AI Personal Insight</h3>
                         <p id="ai-wisdom-text" style="font-size: 0.95rem; color: #cbd5e1; line-height: 1.6;">Remember: Stay hydrated and monitor your symptoms. AI analysis is an early pre-diagnosis tool and should be used to facilitate your conversation with a professional specialist.</p>
                     </div>
+
+                    <!-- 📄 Medical Report Analysis Result -->
+                    <div id="report-result-section" class="card reveal" style="grid-column: span 2; display: none; background: rgba(15, 23, 42, 0.8);">
+                        <h3>Report Study & Explanation</h3>
+                        <div class="report-meta" style="margin-bottom: 20px;">
+                            <span class="badge" id="report-type-badge">Blood Test</span>
+                            <span class="badge low" id="report-timestamp">2026-03-31</span>
+                        </div>
+                        <div class="report-analysis-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                            <div class="extrated-vitals">
+                                <h4>Extracted Metrics</h4>
+                                <ul id="report-vitals-list" style="list-style: none; padding: 0;">
+                                    <!-- Vitals inject here -->
+                                </ul>
+                            </div>
+                            <div class="ai-explanation">
+                                <h4>AI Parameter Explanation</h4>
+                                <div id="report-explanations" style="font-size: 0.9rem; color: #94a3b8;">
+                                    <!-- Explanations inject here -->
+                                </div>
+                            </div>
+                        </div>
+                        <div class="ai-counsel-card" style="margin-top: 20px; background: rgba(59, 130, 246, 0.1);">
+                            <h4>AI Insight</h4>
+                            <p id="report-ai-analysis"></p>
+                        </div>
+                    </div>
+                </div>
                 </div>
 
                 <div class="result-footer">

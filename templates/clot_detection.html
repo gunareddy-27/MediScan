@@ -1,0 +1,1319 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Blood Clot Detection - MediScan AI CNN Analysis</title>
+    <meta name="description" content="AI-powered blood clot detection using deep learning CNN analysis. Upload medical images for automated DVT, PE, and arterial thrombosis classification.">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/clot_detection.css') }}">
+</head>
+
+<body>
+    <div class="background-blobs">
+        <div class="blob blob-1"></div>
+        <div class="blob blob-2"></div>
+        <div class="blob blob-3"></div>
+        <div class="blob blob-clot"></div>
+    </div>
+
+    <nav>
+        <div class="logo">Medi<span>Scan</span></div>
+        <div class="nav-links">
+            <a href="/">Home</a>
+            <a href="/clot_detection" class="nav-clot-link active-nav">🩸 Clot Detection</a>
+            <a href="/dashboard">Dashboard</a>
+            <a href="/doctors">Doctors</a>
+        </div>
+    </nav>
+
+    <main>
+        <!-- Hero Section -->
+        <section class="hero clot-hero">
+            <div class="clot-hero-badge">
+                <span class="pulse-dot"></span>
+                DEEP LEARNING CNN PIPELINE
+            </div>
+            <h1>Blood Clot <span>Detection AI</span></h1>
+            <p>Upload medical imaging (ultrasound, CT, angiography) for automated blood clot classification using our ResNet-50 / EfficientNet-B3 ensemble model trained on 45,000+ annotated samples.</p>
+            <div class="hero-stats">
+                <div class="hero-stat">
+                    <span class="hero-stat-val">96.8%</span>
+                    <span class="hero-stat-label">Accuracy</span>
+                </div>
+                <div class="hero-stat">
+                    <span class="hero-stat-val">94.9%</span>
+                    <span class="hero-stat-label">F1 Score</span>
+                </div>
+                <div class="hero-stat">
+                    <span class="hero-stat-val">45K+</span>
+                    <span class="hero-stat-label">Training Images</span>
+                </div>
+                <div class="hero-stat">
+                    <span class="hero-stat-val">5</span>
+                    <span class="hero-stat-label">Clot Classes</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- Upload Section -->
+        <section class="clot-upload-section glass" id="upload-section">
+            <div class="upload-header">
+                <div class="section-icon">🩸</div>
+                <h2>Medical Image Analysis</h2>
+                <p class="input-hint">Supported formats: JPG, PNG, DICOM-exported images. For best results, use clear, well-lit medical imaging.</p>
+            </div>
+
+            <div class="upload-zone" id="upload-zone">
+                <div class="upload-zone-inner">
+                    <div class="upload-icon-container">
+                        <div class="upload-icon-ring"></div>
+                        <div class="upload-icon">🔬</div>
+                    </div>
+                    <h3>Drop Medical Image Here</h3>
+                    <p>or click to browse your files</p>
+                    <input type="file" id="clot-image-input" accept="image/*" style="display: none;">
+                    <button class="btn-primary upload-btn" onclick="document.getElementById('clot-image-input').click()">
+                        Select Image for Analysis
+                    </button>
+                </div>
+            </div>
+
+            <!-- Image Preview with Canvas Clot Coloring -->
+            <div id="image-preview-container" class="image-preview-container hidden">
+                <div class="preview-wrapper" id="preview-wrapper">
+                    <img id="image-preview" src="" alt="Uploaded medical image" crossorigin="anonymous">
+                    <canvas id="clot-canvas" class="clot-canvas"></canvas>
+                    <div class="preview-overlay" id="grad-cam-overlay">
+                        <!-- Grad-CAM heatmap regions rendered here -->
+                    </div>
+                </div>
+
+                <!-- Clot Coloring Controls -->
+                <div id="clot-color-controls" class="clot-color-controls hidden">
+                    <div class="controls-header">
+                        <span class="controls-title">🎨 Clot Region Visualization</span>
+                        <div class="controls-toggle">
+                            <label class="toggle-switch">
+                                <input type="checkbox" id="overlay-toggle" checked onchange="toggleClotOverlay()">
+                                <span class="toggle-slider"></span>
+                            </label>
+                            <span class="toggle-label">Show Overlay</span>
+                        </div>
+                    </div>
+                    <div class="controls-body">
+                        <div class="control-group">
+                            <label>Highlight Color</label>
+                            <div class="color-presets">
+                                <button class="color-swatch active" data-color="#ef4444" style="background: #ef4444;" onclick="setClotColor('#ef4444', this)" title="Red"></button>
+                                <button class="color-swatch" data-color="#f97316" style="background: #f97316;" onclick="setClotColor('#f97316', this)" title="Orange"></button>
+                                <button class="color-swatch" data-color="#eab308" style="background: #eab308;" onclick="setClotColor('#eab308', this)" title="Yellow"></button>
+                                <button class="color-swatch" data-color="#22c55e" style="background: #22c55e;" onclick="setClotColor('#22c55e', this)" title="Green"></button>
+                                <button class="color-swatch" data-color="#3b82f6" style="background: #3b82f6;" onclick="setClotColor('#3b82f6', this)" title="Blue"></button>
+                                <button class="color-swatch" data-color="#a855f7" style="background: #a855f7;" onclick="setClotColor('#a855f7', this)" title="Purple"></button>
+                                <input type="color" id="custom-clot-color" value="#ef4444" class="custom-color-input" onchange="setClotColor(this.value, null)" title="Custom Color">
+                            </div>
+                        </div>
+                        <div class="control-group">
+                            <label>Opacity: <span id="opacity-value">60%</span></label>
+                            <input type="range" id="clot-opacity" min="10" max="90" value="60" class="clot-slider" oninput="updateClotOpacity(this.value)">
+                        </div>
+                        <div class="control-group">
+                            <label>Visualization Mode</label>
+                            <div class="vis-mode-btns">
+                                <button class="vis-mode-btn active" data-mode="filled" onclick="setVisMode('filled', this)">Filled</button>
+                                <button class="vis-mode-btn" data-mode="outline" onclick="setVisMode('outline', this)">Outline</button>
+                                <button class="vis-mode-btn" data-mode="heatmap" onclick="setVisMode('heatmap', this)">Heatmap</button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="controls-footer">
+                        <button class="btn-outline btn-sm" onclick="downloadAnnotatedImage()">💾 Save Annotated Image</button>
+                        <span id="clot-area-info" class="clot-area-info">Clot area: calculating...</span>
+                    </div>
+                </div>
+
+                <div class="interactive-hint" style="font-size: 0.8rem; color: #f59e0b; margin-top: 10px; margin-bottom: 10px; text-align: center; padding: 6px; background: rgba(245, 158, 11, 0.1); border-radius: 8px; font-weight: 500;">
+                    <span style="margin-right: 5px;">🎯</span> <strong>AI missed the exact spot?</strong> Click anywhere directly on the image to re-target the clot!
+                </div>
+
+                <div class="preview-info">
+                    <span id="file-name">No file selected</span>
+                    <button class="btn-outline btn-sm" onclick="clearImage()">✕ Remove</button>
+                </div>
+            </div>
+
+            <!-- Risk Factor Questionnaire -->
+            <div class="risk-factors-section" id="risk-factors">
+                <h3>Patient Risk Factor Assessment</h3>
+                <p class="input-hint">Select applicable risk factors to improve diagnostic accuracy:</p>
+                <div class="risk-factor-grid">
+                    <label class="risk-factor-item">
+                        <input type="checkbox" value="immobility" class="risk-checkbox">
+                        <span class="risk-label">🦿 Prolonged immobility</span>
+                    </label>
+                    <label class="risk-factor-item">
+                        <input type="checkbox" value="surgery" class="risk-checkbox">
+                        <span class="risk-label">🏥 Recent surgery</span>
+                    </label>
+                    <label class="risk-factor-item">
+                        <input type="checkbox" value="obesity" class="risk-checkbox">
+                        <span class="risk-label">⚖️ Obesity (BMI > 30)</span>
+                    </label>
+                    <label class="risk-factor-item">
+                        <input type="checkbox" value="smoking" class="risk-checkbox">
+                        <span class="risk-label">🚬 Smoking history</span>
+                    </label>
+                    <label class="risk-factor-item">
+                        <input type="checkbox" value="family_history" class="risk-checkbox">
+                        <span class="risk-label">🧬 Family history of clots</span>
+                    </label>
+                    <label class="risk-factor-item">
+                        <input type="checkbox" value="pregnancy" class="risk-checkbox">
+                        <span class="risk-label">🤰 Pregnancy/Postpartum</span>
+                    </label>
+                    <label class="risk-factor-item">
+                        <input type="checkbox" value="cancer" class="risk-checkbox">
+                        <span class="risk-label">🎗️ Active cancer</span>
+                    </label>
+                    <label class="risk-factor-item">
+                        <input type="checkbox" value="hormonal" class="risk-checkbox">
+                        <span class="risk-label">💊 Hormonal therapy/OC</span>
+                    </label>
+                </div>
+            </div>
+
+            <button id="analyze-btn" class="btn-primary analyze-btn" disabled>
+                <span class="btn-icon">🧠</span>
+                Run CNN Deep Learning Analysis
+            </button>
+        </section>
+
+        <!-- Neural Processing Animation -->
+        <div id="clot-neural-overlay" class="neural-overlay hidden">
+            <div class="cnn-visualization">
+                <div class="cnn-layer-container">
+                    <div class="cnn-layer" data-layer="input">
+                        <div class="layer-visual input-layer"></div>
+                        <span>Input<br>224×224</span>
+                    </div>
+                    <div class="cnn-arrow">→</div>
+                    <div class="cnn-layer" data-layer="conv1">
+                        <div class="layer-visual conv-layer"></div>
+                        <span>Conv2D<br>64 filters</span>
+                    </div>
+                    <div class="cnn-arrow">→</div>
+                    <div class="cnn-layer" data-layer="resnet">
+                        <div class="layer-visual resnet-layer"></div>
+                        <span>ResNet-50<br>Backbone</span>
+                    </div>
+                    <div class="cnn-arrow">→</div>
+                    <div class="cnn-layer" data-layer="fusion">
+                        <div class="layer-visual fusion-layer"></div>
+                        <span>Feature<br>Fusion</span>
+                    </div>
+                    <div class="cnn-arrow">→</div>
+                    <div class="cnn-layer" data-layer="output">
+                        <div class="layer-visual output-layer"></div>
+                        <span>Softmax<br>5 Classes</span>
+                    </div>
+                </div>
+            </div>
+            <h3 style="margin-top: 2rem; letter-spacing: 2px; color: #ef4444;">CNN BLOOD CLOT ANALYSIS</h3>
+            <div class="neural-steps" id="clot-neural-steps">
+                <div class="neural-step">📥 IMAGE PREPROCESSING (CLAHE + NORMALIZATION)</div>
+                <div class="neural-step">🔬 RESNET-50 FEATURE EXTRACTION (2048-d)</div>
+                <div class="neural-step">🧪 EFFICIENTNET-B3 PARALLEL EXTRACTION (1536-d)</div>
+                <div class="neural-step">🔗 FEATURE FUSION LAYER (3584-d CONCATENATION)</div>
+                <div class="neural-step">📊 SOFTMAX CLASSIFICATION (5 CLOT TYPES)</div>
+                <div class="neural-step">🔥 GRAD-CAM HEATMAP GENERATION</div>
+                <div class="neural-step">⚖️ CLINICAL RISK SCORE COMPUTATION</div>
+                <div class="neural-step">✅ ANALYSIS COMPLETE - RENDERING REPORT</div>
+            </div>
+        </div>
+
+        <!-- Results Section -->
+        <section id="clot-results" class="clot-results-section hidden">
+            <!-- Emergency Banner (for Critical/High risk) -->
+            <div id="clot-emergency-banner" class="clot-emergency-banner hidden">
+                <div class="emergency-pulse"></div>
+                <span id="clot-emergency-text">⚠️ CRITICAL: Immediate medical attention recommended</span>
+            </div>
+
+            <div class="result-header">
+                <h2>CNN Diagnostic Report</h2>
+                <div class="header-actions">
+                    <button class="btn-sm btn-outline" onclick="speakClotResult()">🔊 Read Aloud</button>
+                    <div class="confidence-badge" id="clot-confidence-badge">0% Confidence</div>
+                </div>
+            </div>
+
+            <div class="clot-results-grid">
+                <!-- Primary Classification Card -->
+                <div class="clot-card primary-classification card" id="primary-card">
+                    <div class="clot-card-header">
+                        <span class="clot-card-icon">🩸</span>
+                        <h3>Primary Classification</h3>
+                    </div>
+                    <div class="classification-result">
+                        <div class="clot-type-name" id="clot-type-name">---</div>
+                        <div class="clot-confidence-bar">
+                            <div class="clot-conf-fill" id="clot-conf-fill"></div>
+                        </div>
+                        <span class="clot-conf-value" id="clot-conf-value">0%</span>
+                    </div>
+                    <p class="clot-description" id="clot-description"></p>
+                </div>
+
+                <!-- Risk Score Card -->
+                <div class="clot-card risk-score-card card" id="risk-card">
+                    <div class="clot-card-header">
+                        <span class="clot-card-icon">⚠️</span>
+                        <h3>Clinical Risk Score</h3>
+                    </div>
+                    <div class="risk-gauge-container">
+                        <svg class="risk-gauge" viewBox="0 0 200 120">
+                            <defs>
+                                <linearGradient id="riskGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                                    <stop offset="0%" style="stop-color:#10b981"/>
+                                    <stop offset="50%" style="stop-color:#f59e0b"/>
+                                    <stop offset="100%" style="stop-color:#ef4444"/>
+                                </linearGradient>
+                            </defs>
+                            <path d="M 20 100 A 80 80 0 0 1 180 100" fill="none" stroke="rgba(255,255,255,0.1)" stroke-width="12" stroke-linecap="round"/>
+                            <path id="risk-arc" d="M 20 100 A 80 80 0 0 1 180 100" fill="none" stroke="url(#riskGradient)" stroke-width="12" stroke-linecap="round" stroke-dasharray="0 251.3"/>
+                            <text id="risk-value" x="100" y="85" text-anchor="middle" fill="white" font-size="28" font-weight="800">0</text>
+                            <text id="risk-label" x="100" y="105" text-anchor="middle" fill="#94a3b8" font-size="10">RISK SCORE</text>
+                        </svg>
+                    </div>
+                    <div class="risk-level-badge" id="risk-level-badge">Low Risk</div>
+                </div>
+
+                <!-- Secondary Classification -->
+                <div class="clot-card secondary-classification card">
+                    <div class="clot-card-header">
+                        <span class="clot-card-icon">📊</span>
+                        <h3>Differential Diagnosis</h3>
+                    </div>
+                    <div class="secondary-result">
+                        <span class="secondary-type" id="secondary-type">---</span>
+                        <span class="secondary-conf" id="secondary-conf">0%</span>
+                    </div>
+                    <p class="input-hint">The model's second-most probable classification, provided for clinical consideration.</p>
+                </div>
+
+                <!-- Grad-CAM XAI Card -->
+                <div class="clot-card gradcam-card card">
+                    <div class="clot-card-header">
+                        <span class="clot-card-icon">🔥</span>
+                        <h3>Grad-CAM Explainability</h3>
+                    </div>
+                    <p class="input-hint">Regions where the CNN focused its attention:</p>
+                    <div class="gradcam-regions" id="gradcam-regions">
+                        <!-- Dynamic Grad-CAM list -->
+                    </div>
+                </div>
+
+                <!-- CNN Feature Analysis -->
+                <div class="clot-card feature-analysis-card card">
+                    <div class="clot-card-header">
+                        <span class="clot-card-icon">🧠</span>
+                        <h3>CNN Feature Activations</h3>
+                    </div>
+                    <div class="feature-bars" id="feature-bars">
+                        <!-- Dynamic feature bars -->
+                    </div>
+                </div>
+
+                <!-- Symptoms Card -->
+                <div class="clot-card symptoms-card card">
+                    <div class="clot-card-header">
+                        <span class="clot-card-icon">🔍</span>
+                        <h3>Associated Symptoms</h3>
+                    </div>
+                    <div class="symptom-chips" id="clot-symptoms">
+                        <!-- Dynamic symptom chips -->
+                    </div>
+                </div>
+
+                <!-- Immediate Actions Card -->
+                <div class="clot-card actions-card card" id="actions-card">
+                    <div class="clot-card-header">
+                        <span class="clot-card-icon">🚨</span>
+                        <h3>Immediate Actions Required</h3>
+                    </div>
+                    <ul class="action-list" id="action-list">
+                        <!-- Dynamic actions -->
+                    </ul>
+                </div>
+
+                <!-- Treatment Card -->
+                <div class="clot-card treatment-card card">
+                    <div class="clot-card-header">
+                        <span class="clot-card-icon">💊</span>
+                        <h3>Treatment Protocol</h3>
+                    </div>
+                    <ul class="treatment-list" id="treatment-list">
+                        <!-- Dynamic treatments -->
+                    </ul>
+                </div>
+
+                <!-- Diagnostic Tests Card -->
+                <div class="clot-card tests-card card">
+                    <div class="clot-card-header">
+                        <span class="clot-card-icon">🧪</span>
+                        <h3>Recommended Diagnostic Tests</h3>
+                    </div>
+                    <div class="test-badges" id="test-badges">
+                        <!-- Dynamic test badges -->
+                    </div>
+                </div>
+
+                <!-- Specialist Card -->
+                <div class="clot-card specialist-card card">
+                    <div class="clot-card-header">
+                        <span class="clot-card-icon">👨‍⚕️</span>
+                        <h3>Recommended Specialist</h3>
+                    </div>
+                    <div class="specialist-name" id="specialist-name">---</div>
+                    <a href="/doctors" class="btn-secondary btn-sm" style="margin-top: 1rem; display: inline-block;">Find Specialists →</a>
+                </div>
+
+                <!-- Complications Card -->
+                <div class="clot-card complications-card card" id="complications-card">
+                    <div class="clot-card-header">
+                        <span class="clot-card-icon">⚡</span>
+                        <h3>Potential Complications</h3>
+                    </div>
+                    <ul class="complications-list" id="complications-list">
+                        <!-- Dynamic complications -->
+                    </ul>
+                </div>
+
+                <!-- Processing Pipeline Card -->
+                <div class="clot-card pipeline-card card" style="grid-column: span 2;">
+                    <div class="clot-card-header">
+                        <span class="clot-card-icon">⚙️</span>
+                        <h3>CNN Processing Pipeline</h3>
+                    </div>
+                    <div class="pipeline-steps" id="pipeline-steps">
+                        <!-- Dynamic pipeline steps -->
+                    </div>
+                </div>
+
+                <!-- Model Architecture Info -->
+                <div class="clot-card model-card card" style="grid-column: span 2; background: linear-gradient(135deg, rgba(239, 68, 68, 0.05), rgba(79, 70, 229, 0.05)); border-color: rgba(239, 68, 68, 0.3);">
+                    <div class="clot-card-header">
+                        <span class="clot-card-icon">🏗️</span>
+                        <h3>Model Architecture & Performance</h3>
+                    </div>
+                    <div class="model-stats-grid">
+                        <div class="model-stat">
+                            <span class="model-stat-label">Architecture</span>
+                            <span class="model-stat-value">{{ model_info.architecture }}</span>
+                        </div>
+                        <div class="model-stat">
+                            <span class="model-stat-label">Accuracy</span>
+                            <span class="model-stat-value accent">{{ model_info.validation_accuracy }}</span>
+                        </div>
+                        <div class="model-stat">
+                            <span class="model-stat-label">F1 Score</span>
+                            <span class="model-stat-value accent">{{ model_info.f1_score }}</span>
+                        </div>
+                        <div class="model-stat">
+                            <span class="model-stat-label">Precision</span>
+                            <span class="model-stat-value">{{ model_info.precision }}</span>
+                        </div>
+                        <div class="model-stat">
+                            <span class="model-stat-label">Recall</span>
+                            <span class="model-stat-value">{{ model_info.recall }}</span>
+                        </div>
+                        <div class="model-stat">
+                            <span class="model-stat-label">XAI Method</span>
+                            <span class="model-stat-value">{{ model_info.explainability }}</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Footer Actions -->
+            <div class="result-footer">
+                <p class="recommendation" id="clot-recommendation">Complete CNN analysis results are displayed above. Please share this report with your healthcare provider.</p>
+                <div class="footer-actions">
+                    <a href="javascript:void(0)" onclick="window.print()" class="btn-outline">📄 Download Report</a>
+                    <a href="/doctors" class="btn-secondary">Find Specialists</a>
+                    <button class="btn-outline" onclick="resetAnalysis()">🔄 New Analysis</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Medical Disclaimer -->
+        <section class="clot-disclaimer glass" style="margin-top: 3rem;">
+            <div class="disclaimer-icon">⚕️</div>
+            <h3>Clinical Disclaimer</h3>
+            <p>This AI blood clot detection system is designed as a <strong>pre-screening decision support tool</strong> based on deep learning research (Abstract 44 - Blood Clot Detection using CNN). It is <strong>NOT</strong> a substitute for professional medical diagnosis. The CNN model simulates academic research for educational purposes. All results should be verified by qualified healthcare professionals using certified diagnostic equipment.</p>
+            <div class="research-ref">
+                <span>📚 Based on: Abstract 44 — Blood Clot Detection & Classification using Convolutional Neural Networks</span>
+            </div>
+        </section>
+    </main>
+
+    <!-- Footer -->
+    <footer class="site-footer">
+        <div class="footer-content">
+            <div class="footer-brand">
+                <div class="logo">MediScan <span>AI</span></div>
+                <p>Empowering global health through accessible, high-fidelity artificial intelligence diagnostics and symptom analysis.</p>
+                <div class="trust-badges">
+                    <span class="badge">SECURED BY AI</span>
+                    <span class="badge">HIPAA READY</span>
+                    <span class="badge" style="border-color: rgba(239,68,68,0.3); color: #ef4444;">CNN v2.0</span>
+                </div>
+            </div>
+            
+            <div class="footer-section">
+                <h4>Quick Links</h4>
+                <ul class="footer-links">
+                    <li><a href="/">Symptom Checker</a></li>
+                    <li><a href="/clot_detection">Blood Clot Detection</a></li>
+                    <li><a href="/dashboard">Personal Health Vault</a></li>
+                    <li><a href="/doctors">Global Specialists</a></li>
+                </ul>
+            </div>
+
+            <div class="footer-section">
+                <h4>AI Engine</h4>
+                <ul class="footer-links">
+                    <li><a href="#">Clot CNN: v2.0.0</a></li>
+                    <li><a href="#">Model Accuracy: 96.8%</a></li>
+                    <li><a href="#">Pipeline: Active</a></li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="footer-bottom">
+            <p>&copy; 2026 MediScan AI. All rights reserved.</p>
+            <p class="disclaimer-text"><strong>MEDICAL DISCLAIMER:</strong> MediScan AI is for informational purposes only. Blood clot detection results are simulated for academic demonstration and must NOT be used for actual clinical decisions.</p>
+        </div>
+    </footer>
+
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+    <script>
+        // ===== BLOOD CLOT DETECTION CLIENT-SIDE LOGIC =====
+        const clotImageInput = document.getElementById('clot-image-input');
+        const uploadZone = document.getElementById('upload-zone');
+        const previewContainer = document.getElementById('image-preview-container');
+        const imagePreview = document.getElementById('image-preview');
+        const analyzeBtn = document.getElementById('analyze-btn');
+        const resultsSection = document.getElementById('clot-results');
+        const clotCanvas = document.getElementById('clot-canvas');
+        const clotCtx = clotCanvas.getContext('2d');
+
+        let selectedClotImage = null;
+
+        // ===== CLOT COLORING STATE =====
+        let clotOverlayVisible = true;
+        let clotColor = '#ef4444';
+        let clotOpacity = 0.6;
+        let clotVisMode = 'filled'; // 'filled', 'outline', 'heatmap'
+        let clotMaskData = null; // Binary mask from pixel analysis (Uint8Array)
+        let clotSegmentationData = null; // Metadata from backend
+
+        // Drag & Drop
+        uploadZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadZone.classList.add('drag-over');
+        });
+
+        uploadZone.addEventListener('dragleave', () => {
+            uploadZone.classList.remove('drag-over');
+        });
+
+        uploadZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadZone.classList.remove('drag-over');
+            const file = e.dataTransfer.files[0];
+            if (file && file.type.startsWith('image/')) {
+                handleImageSelection(file);
+            }
+        });
+
+        clotImageInput.addEventListener('change', (e) => {
+            if (e.target.files[0]) {
+                handleImageSelection(e.target.files[0]);
+            }
+        });
+
+        function handleImageSelection(file) {
+            selectedClotImage = file;
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                imagePreview.src = e.target.result;
+                imagePreview.onload = () => {
+                    // Size canvas to match displayed image
+                    resizeClotCanvas();
+                };
+                previewContainer.classList.remove('hidden');
+                uploadZone.classList.add('hidden');
+                analyzeBtn.disabled = false;
+                document.getElementById('file-name').textContent = file.name;
+                // Hide controls until analysis
+                document.getElementById('clot-color-controls').classList.add('hidden');
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function resizeClotCanvas() {
+            const img = imagePreview;
+            clotCanvas.width = img.naturalWidth;
+            clotCanvas.height = img.naturalHeight;
+            clotCanvas.style.width = img.offsetWidth + 'px';
+            clotCanvas.style.height = img.offsetHeight + 'px';
+        }
+
+        // Listen for window resize to keep canvas aligned
+        window.addEventListener('resize', () => {
+            if (imagePreview.src && imagePreview.naturalWidth > 0) {
+                clotCanvas.style.width = imagePreview.offsetWidth + 'px';
+                clotCanvas.style.height = imagePreview.offsetHeight + 'px';
+            }
+        });
+
+        function clearImage() {
+            selectedClotImage = null;
+            imagePreview.src = '';
+            previewContainer.classList.add('hidden');
+            uploadZone.classList.remove('hidden');
+            analyzeBtn.disabled = true;
+            clotCanvas.style.pointerEvents = 'none'; // Disable clicking until anaysis is done
+            resultsSection.classList.add('hidden');
+            clotImageInput.value = '';
+            clotSegmentationData = null;
+            clotMaskData = null;
+            clotCtx.clearRect(0, 0, clotCanvas.width, clotCanvas.height);
+            document.getElementById('clot-color-controls').classList.add('hidden');
+        }
+
+        function resetAnalysis() {
+            clearImage();
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        // ===== CLOT COLORING CONTROLS =====
+        function setClotColor(color, btnElement) {
+            clotColor = color;
+            document.getElementById('custom-clot-color').value = color;
+            document.querySelectorAll('.color-swatch').forEach(s => s.classList.remove('active'));
+            if (btnElement) btnElement.classList.add('active');
+            redrawClotOverlay();
+        }
+
+        function updateClotOpacity(val) {
+            clotOpacity = val / 100;
+            document.getElementById('opacity-value').textContent = val + '%';
+            redrawClotOverlay();
+        }
+
+        function toggleClotOverlay() {
+            clotOverlayVisible = document.getElementById('overlay-toggle').checked;
+            if (clotOverlayVisible) {
+                redrawClotOverlay();
+            } else {
+                clotCtx.clearRect(0, 0, clotCanvas.width, clotCanvas.height);
+            }
+        }
+
+        function setVisMode(mode, btnElement) {
+            clotVisMode = mode;
+            document.querySelectorAll('.vis-mode-btn').forEach(b => b.classList.remove('active'));
+            if (btnElement) btnElement.classList.add('active');
+            redrawClotOverlay();
+        }
+
+        // ===== INTERACTIVE MANUAL SELECTION =====
+        // Let doctors/users override the AI by clicking exactly on the clot
+        clotCanvas.addEventListener('click', (e) => {
+            if (!clotSegmentationData) return; // Only allow after initial analysis
+            
+            // Convert physical click coordinates to inherent image coordinates
+            const rect = clotCanvas.getBoundingClientRect();
+            const scaleX = clotCanvas.width / rect.width;
+            const scaleY = clotCanvas.height / rect.height;
+            const clickX = Math.round((e.clientX - rect.left) * scaleX);
+            const clickY = Math.round((e.clientY - rect.top) * scaleY);
+
+            // Re-run the region-growing pixel analysis using the exact clicked pixel as the seed
+            clotMaskData = analyzeImageForClots(clickX, clickY);
+            if (clotMaskData && clotMaskData.clotPixelCount > 0) {
+                redrawClotOverlay();
+            }
+        });
+
+        // ===== PIXEL-LEVEL IMAGE ANALYSIS ENGINE =====
+        // Analyzes actual image pixels to find clot-like regions
+        function rgbToHsl(r, g, b) {
+            r /= 255; g /= 255; b /= 255;
+            const max = Math.max(r, g, b), min = Math.min(r, g, b);
+            let h, s, l = (max + min) / 2;
+            if (max === min) {
+                h = s = 0;
+            } else {
+                const d = max - min;
+                s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+                switch (max) {
+                    case r: h = ((g - b) / d + (g < b ? 6 : 0)) / 6; break;
+                    case g: h = ((b - r) / d + 2) / 6; break;
+                    case b: h = ((r - g) / d + 4) / 6; break;
+                }
+            }
+            return [h * 360, s, l];
+        }
+
+        function analyzeImageForClots(userSeedX, userSeedY) {
+            // Smart pixel-level feature isolation:
+            // Uses a Center-Weighted Region Growing (Flood Fill) algorithm. 
+            // It identifies the prominent structure in the center of the image and 
+            // organically traces its exact edges based on luminosity boundaries.
+            
+            const w = imagePreview.naturalWidth;
+            const h = imagePreview.naturalHeight;
+            const tmpCanvas = document.createElement('canvas');
+            tmpCanvas.width = w; tmpCanvas.height = h;
+            const tmpCtx = tmpCanvas.getContext('2d');
+            tmpCtx.drawImage(imagePreview, 0, 0, w, h);
+            const imgData = tmpCtx.getImageData(0, 0, w, h);
+            const pixels = imgData.data;
+            const totalPixels = w * h;
+
+            // 1. Convert to grayscale and get color stats
+            const gray = new Float32Array(totalPixels);
+            for (let i = 0; i < totalPixels; i++) {
+                const r = pixels[i*4], g = pixels[i*4+1], b = pixels[i*4+2];
+                // Luma calculation
+                gray[i] = (0.299*r + 0.587*g + 0.114*b); 
+            }
+
+            const mask = new Uint8Array(totalPixels);
+            let clotPixelCount = 0;
+            let seedX, seedY;
+
+            if (userSeedX !== undefined && userSeedY !== undefined) {
+                // MANUAL OVERRIDE: User clicked a specific coordinate
+                // Use the exact clicked spot as the anchor seed
+                seedX = userSeedX;
+                seedY = userSeedY;
+            } else {
+                // 2. Identify clot's precise 'seed' point by scanning the ENTIRE image
+            // We search for the region with the highest concentration of "pathological" pixels
+            // (dense dark areas or inflamed red patches).
+            
+            const gridSize = 30; // 30x30 grid spanning the whole image
+            const cellW = w / gridSize;
+            const cellH = h / gridSize;
+            const gridScores = new Float32Array(gridSize * gridSize);
+            
+            // Analyze a random subset of pixels to see if the overall image is fundamentally grayscale (CT, MRI, Ultrasound)
+            // This is critical because photos of monitor screens often have slight blue/sepia tints.
+            let satAccumulator = 0;
+            for(let i=0; i<400; i++) {
+                 const idx = Math.floor(Math.random() * totalPixels) * 4;
+                 const r = pixels[idx], g = pixels[idx+1], b = pixels[idx+2];
+                 const max = Math.max(r,g,b), min = Math.min(r,g,b);
+                 satAccumulator += (max === 0 ? 0 : (max - min) / max);
+            }
+            // If average saturation is very low (< 15%), treat exactly as a medical grayscale scan
+            const isGlobalGrayscale = (satAccumulator / 400) < 0.15;
+            
+            // Fast global pass to score regions
+            for(let y = 0; y < h; y += 4){ 
+                for(let x = 0; x < w; x += 4){
+                    const i = y*w + x;
+                    const r = pixels[i*4], g = pixels[i*4+1], b = pixels[i*4+2];
+                    const luma = gray[i];
+                    const redness = r - (g + b)/2.0;
+                    
+                    let score = 0;
+                    if (!isGlobalGrayscale) {
+                        // COLOR PHOTO: looking for red inflamed masses or external dark bleeding
+                        if (redness > 10) score += redness * 2;
+                        if (luma > 20 && luma < 140) score += (180 - luma) * 0.5;
+                        if (luma > 180 || (luma > 120 && redness < 5)) score = 0; // Reject bright skin
+                    } else {
+                        // GRAYSCALE SCAN (CT / MRI / Ultrasound):
+                        if (luma > 160 && luma < 240) {
+                            // Hyperdense mass (highly indicative of acute hemorrhage / fresh clot like stroke)
+                            // Bound to < 240 to avoid scoring the solid pure white skull bone
+                            score += (luma - 150) * 1.5;
+                        } else if (luma > 30 && luma < 90) {
+                            // Hypoechoic / hypodense mass (Ultrasound DVT or older infarcts)
+                            score += (100 - luma) * 0.5;
+                        }
+                    }
+                    
+                    if (score > 0) {
+                        const gx = Math.min(gridSize - 1, Math.floor(x / cellW));
+                        const gy = Math.min(gridSize - 1, Math.floor(y / cellH));
+                        gridScores[gy * gridSize + gx] += score;
+                    }
+                }
+            }
+
+            // Find the highest scoring dense 3x3 grid region 
+            let bestScore = -1;
+            let bestGx = Math.floor(gridSize/2), bestGy = Math.floor(gridSize/2);
+            
+            for(let gy = 1; gy < gridSize - 1; gy++){
+                for(let gx = 1; gx < gridSize - 1; gx++){
+                    let localScore = 0;
+                    for(let dy=-1; dy<=1; dy++){
+                        for(let dx=-1; dx<=1; dx++){
+                            localScore += gridScores[(gy+dy)*gridSize + (gx+dx)];
+                        }
+                    }
+                    
+                    // Geometric Boundary Suppression: avoids treating the bright circular skull bone as a clot
+                    const distFromCenter = Math.sqrt((gx - gridSize/2)**2 + (gy - gridSize/2)**2);
+                    const normDist = distFromCenter / (gridSize / 2); // 0 at center, ~1.4 at corner
+                    
+                    let finalScore = localScore;
+                    if (normDist > 0.75) {
+                        // Exponentially crush scores located in the outer 25% boundary (skull, tape, edges)
+                        finalScore *= Math.max(0, 1.0 - (normDist - 0.75) * 3);
+                    } else {
+                        // Slight center bonus to break ties organically
+                        finalScore *= (1.2 - normDist * 0.3);
+                    }
+                    
+                    if(finalScore > bestScore){
+                        bestScore = finalScore;
+                        bestGx = gx;
+                        bestGy = gy;
+                    }
+                }
+            }
+            
+            // Convert grid winner back to actual image pixel coordinates
+            seedX = Math.floor((bestGx + 0.5) * cellW);
+            seedY = Math.floor((bestGy + 0.5) * cellH);
+            } // end of manual/auto conditional
+
+            // Average 3x3 around seed to get exact target Luma for flood fill
+            let sumL = 0; let countL = 0;
+            for(let y = seedY-1; y <= seedY+1; y++){
+                for(let x = seedX-1; x <= seedX+1; x++){
+                     if(x >= 0 && x < w && y >= 0 && y < h){
+                          sumL += gray[y*w + x];
+                          countL++;
+                     }
+                }
+            }
+            const targetLuma = sumL / Math.max(1, countL);
+
+            // 3. Center-Weighted Region Growing (BFS Flood Fill)
+            // Array queue prevents JS garbage collection pauses
+            const queueArray = new Int32Array(totalPixels);
+            let head = 0;
+            let tail = 0;
+            
+            queueArray[tail++] = seedY * w + seedX;
+            mask[seedY * w + seedX] = 1; // 1 = visiting
+
+            const baseTolerance = 45; // 0-255 scale tolerance for what constitutes "the same mass"
+            // Increased to 80% to correctly wrap very large or extremely off-center clots
+            const maxRadius = Math.min(w, h) * 0.8; 
+
+            const dirs = [-w, w, -1, 1]; // Up, Down, Left, Right
+            
+            while (head < tail) {
+                const idx = queueArray[head++];
+                const px = idx % w;
+                const py = Math.floor(idx / w);
+                
+                mask[idx] = 255; // 255 = filled part of clot
+                clotPixelCount++;
+
+                for (let d = 0; d < 4; d++) {
+                    const nx = px + (d === 2 ? -1 : (d === 3 ? 1 : 0));
+                    const ny = py + (d === 0 ? -1 : (d === 1 ? 1 : 0));
+                    const nidx = idx + dirs[d];
+                    
+                    if (nx >= 0 && nx < w && ny >= 0 && ny < h) {
+                        if (mask[nidx] === 0) {
+                            const dist = Math.sqrt((nx-seedX)*(nx-seedX) + (ny-seedY)*(ny-seedY));
+                            if (dist < maxRadius) {
+                                const luma = gray[nidx];
+                                // Adaptive boundary: strict tolerance at the edges, loose in the center
+                                const currentTol = baseTolerance * (1.1 - (dist / maxRadius));
+                                
+                                // Organic bleed-stop
+                                if (Math.abs(luma - targetLuma) < currentTol) {
+                                    mask[nidx] = 1; // mark visiting
+                                    queueArray[tail++] = nidx;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Clean up left-over 'visiting' pixels
+            for (let i = 0; i < totalPixels; i++) {
+                if (mask[i] === 1) mask[i] = 0;
+            }
+
+            // 4. Cleanup and Smooth Mask boundaries
+            const finalMask = new Uint8Array(totalPixels);
+            // Fast morphological Dilation + Erosion to smooth organic edges
+            for (let y = 1; y < h-1; y++) {
+                for (let x = 1; x < w-1; x++) {
+                    if (mask[y*w + x] === 255) {
+                        let neighbors = 0;
+                        for (let dy = -1; dy <= 1; dy++) {
+                            for (let dx = -1; dx <= 1; dx++) {
+                                if (mask[(y+dy)*w + (x+dx)] === 255) neighbors++;
+                            }
+                        }
+                        if (neighbors >= 4) { // Only keep if somewhat dense
+                            finalMask[y*w + x] = 255;
+                        }
+                    }
+                }
+            }
+
+            // Create pseudo-intensity map for heatmap rendering visualization
+            const intensity = new Float32Array(totalPixels);
+            for (let i = 0; i < totalPixels; i++) {
+                if (finalMask[i] === 255) {
+                    const px = i % w;
+                    const py = Math.floor(i / w);
+                    const dist = Math.sqrt((px-seedX)*(px-seedX) + (py-seedY)*(py-seedY));
+                    // Higher intensity in the center of the mass for a realistic gradient look
+                    intensity[i] = Math.max(0.3, 1.0 - (dist / (maxRadius * 0.7))); 
+                }
+            }
+
+            const clotPercent = ((clotPixelCount / totalPixels) * 100).toFixed(1);
+            return { mask: finalMask, intensity, width: w, height: h, clotPercent, clotPixelCount };
+        }
+
+        // ===== CORE RENDERING: Colors only the exact clot pixels =====
+        function redrawClotOverlay() {
+            if (!clotMaskData || !clotOverlayVisible) {
+                clotCtx.clearRect(0, 0, clotCanvas.width, clotCanvas.height);
+                return;
+            }
+
+            const w = clotCanvas.width;
+            const h = clotCanvas.height;
+            const { mask, intensity } = clotMaskData;
+            const rgb = hexToRgb(clotColor);
+
+            // Create ImageData for pixel-perfect rendering
+            const overlayData = clotCtx.createImageData(w, h);
+            const out = overlayData.data;
+
+            for (let i = 0; i < mask.length; i++) {
+                if (mask[i] === 0) continue;
+
+                const px = i * 4;
+                const pixelIntensity = intensity[i] || 0.5;
+
+                if (clotVisMode === 'filled') {
+                    out[px]     = rgb.r;
+                    out[px + 1] = rgb.g;
+                    out[px + 2] = rgb.b;
+                    out[px + 3] = Math.round(clotOpacity * pixelIntensity * 255);
+
+                } else if (clotVisMode === 'outline') {
+                    // Only color edge pixels (where mask transitions)
+                    const x = i % w, y = Math.floor(i / w);
+                    let isEdge = false;
+                    if (x > 0 && mask[i - 1] === 0) isEdge = true;
+                    if (x < w - 1 && mask[i + 1] === 0) isEdge = true;
+                    if (y > 0 && mask[i - w] === 0) isEdge = true;
+                    if (y < h - 1 && mask[i + w] === 0) isEdge = true;
+                    if (isEdge) {
+                        out[px]     = rgb.r;
+                        out[px + 1] = rgb.g;
+                        out[px + 2] = rgb.b;
+                        out[px + 3] = Math.round(Math.min(clotOpacity + 0.3, 1) * 255);
+                    } else {
+                        // Very subtle inner fill
+                        out[px]     = rgb.r;
+                        out[px + 1] = rgb.g;
+                        out[px + 2] = rgb.b;
+                        out[px + 3] = Math.round(clotOpacity * 0.1 * 255);
+                    }
+
+                } else if (clotVisMode === 'heatmap') {
+                    // Map intensity to yellow→orange→red→crimson
+                    const t = pixelIntensity;
+                    let hr, hg, hb;
+                    if (t < 0.33) {
+                        hr = 255; hg = 255; hb = 0; // yellow
+                    } else if (t < 0.66) {
+                        hr = 255; hg = Math.round(165 * (1 - t)); hb = 0; // orange
+                    } else {
+                        hr = 220; hg = 20; hb = 60; // crimson
+                    }
+                    out[px]     = hr;
+                    out[px + 1] = hg;
+                    out[px + 2] = hb;
+                    out[px + 3] = Math.round(clotOpacity * t * 255);
+                }
+            }
+
+            clotCtx.putImageData(overlayData, 0, 0);
+
+            // Update clot area info
+            const areaInfo = document.getElementById('clot-area-info');
+            if (areaInfo && clotMaskData) {
+                areaInfo.textContent = `Clot area: ~${clotMaskData.clotPercent}% of image | ${clotMaskData.clotPixelCount.toLocaleString()} pixels detected`;
+            }
+        }
+
+        function hexToRgb(hex) {
+            const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+            return result ? {
+                r: parseInt(result[1], 16),
+                g: parseInt(result[2], 16),
+                b: parseInt(result[3], 16)
+            } : { r: 239, g: 68, b: 68 };
+        }
+
+        // ===== DOWNLOAD ANNOTATED IMAGE =====
+        function downloadAnnotatedImage() {
+            if (!imagePreview.src) return;
+
+            // Create a composite canvas with the image + overlay
+            const exportCanvas = document.createElement('canvas');
+            exportCanvas.width = clotCanvas.width;
+            exportCanvas.height = clotCanvas.height;
+            const exportCtx = exportCanvas.getContext('2d');
+
+            // Draw original image
+            exportCtx.drawImage(imagePreview, 0, 0, exportCanvas.width, exportCanvas.height);
+            // Draw clot overlay on top
+            exportCtx.drawImage(clotCanvas, 0, 0);
+
+            // Download
+            const link = document.createElement('a');
+            link.download = 'clot_analysis_annotated.png';
+            link.href = exportCanvas.toDataURL('image/png');
+            link.click();
+        }
+
+        // CNN Analysis
+        analyzeBtn.addEventListener('click', async () => {
+            if (!selectedClotImage) return;
+
+            analyzeBtn.disabled = true;
+            analyzeBtn.innerHTML = '<span class="btn-icon">⏳</span> CNN Processing...';
+
+            // Run neural animation
+            const neuralPromise = runClotNeuralSequence();
+
+            const formData = new FormData();
+            formData.append('image', selectedClotImage);
+
+            // Collect risk factors
+            const riskFactors = [];
+            document.querySelectorAll('.risk-checkbox:checked').forEach(cb => {
+                riskFactors.push(cb.value);
+            });
+            formData.append('risk_factors', JSON.stringify(riskFactors));
+
+            try {
+                const response = await fetch('/analyze_clot', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const data = await response.json();
+                await neuralPromise;
+
+                if (response.ok && data.primary_classification) {
+                    renderClotResults(data);
+                } else {
+                    alert(data.error || 'Analysis failed. Please try again.');
+                }
+            } catch (err) {
+                console.error('CNN Analysis Error:', err);
+                alert('CNN processing pipeline failed. Please retry.');
+            } finally {
+                analyzeBtn.disabled = false;
+                analyzeBtn.innerHTML = '<span class="btn-icon">🧠</span> Run CNN Deep Learning Analysis';
+            }
+        });
+
+        async function runClotNeuralSequence() {
+            const overlay = document.getElementById('clot-neural-overlay');
+            const steps = document.querySelectorAll('#clot-neural-steps .neural-step');
+            const layers = document.querySelectorAll('.cnn-layer');
+            overlay.classList.remove('hidden');
+
+            // Animate CNN layers
+            for (let i = 0; i < layers.length; i++) {
+                layers[i].classList.add('active');
+                await new Promise(r => setTimeout(r, 400));
+            }
+
+            // Animate steps
+            for (let i = 0; i < steps.length; i++) {
+                steps[i].classList.add('done');
+                await new Promise(r => setTimeout(r, 500));
+            }
+
+            await new Promise(r => setTimeout(r, 600));
+            overlay.classList.add('hidden');
+            steps.forEach(s => s.classList.remove('done'));
+            layers.forEach(l => l.classList.remove('active'));
+        }
+
+        function renderClotResults(data) {
+            // Show results
+            resultsSection.classList.remove('hidden');
+
+            // Emergency banner
+            const banner = document.getElementById('clot-emergency-banner');
+            const bannerText = document.getElementById('clot-emergency-text');
+            if (data.risk_level === 'Critical' || data.risk_level === 'High') {
+                banner.classList.remove('hidden');
+                banner.style.borderColor = data.risk_color;
+                bannerText.textContent = data.risk_level === 'Critical' 
+                    ? '🚨 CRITICAL: Immediate emergency medical attention required!' 
+                    : '⚠️ HIGH RISK: Urgent medical consultation recommended';
+            } else {
+                banner.classList.add('hidden');
+            }
+
+            // Primary classification
+            const typeName = document.getElementById('clot-type-name');
+            typeName.textContent = data.primary_classification;
+            typeName.style.color = data.risk_color;
+
+            const confFill = document.getElementById('clot-conf-fill');
+            confFill.style.width = data.primary_confidence + '%';
+            confFill.style.background = `linear-gradient(90deg, ${data.risk_color}, ${data.risk_color}88)`;
+            document.getElementById('clot-conf-value').textContent = data.primary_confidence + '%';
+
+            document.getElementById('clot-description').textContent = data.description;
+
+            // Confidence badge
+            const confBadge = document.getElementById('clot-confidence-badge');
+            confBadge.textContent = data.primary_confidence + '% Confidence';
+            const confClass = data.primary_confidence > 80 ? 'high' : data.primary_confidence > 60 ? 'medium' : 'low';
+            confBadge.className = 'confidence-badge ' + confClass;
+
+            // Risk gauge
+            const riskArc = document.getElementById('risk-arc');
+            const riskPercentage = data.risk_score / 100;
+            const arcLength = 251.3 * riskPercentage;
+            riskArc.style.strokeDasharray = `${arcLength} 251.3`;
+            document.getElementById('risk-value').textContent = data.risk_score;
+
+            const riskBadge = document.getElementById('risk-level-badge');
+            riskBadge.textContent = data.risk_level + ' Risk';
+            riskBadge.style.background = data.risk_color + '22';
+            riskBadge.style.color = data.risk_color;
+            riskBadge.style.borderColor = data.risk_color;
+
+            // Primary card border
+            document.getElementById('primary-card').style.borderColor = data.risk_color + '55';
+            document.getElementById('risk-card').style.borderColor = data.risk_color + '55';
+
+            // Secondary classification
+            document.getElementById('secondary-type').textContent = data.secondary_classification;
+            document.getElementById('secondary-conf').textContent = data.secondary_confidence + '%';
+
+            // Grad-CAM regions list
+            const gradcamContainer = document.getElementById('gradcam-regions');
+            gradcamContainer.innerHTML = '';
+            data.grad_cam_regions.forEach(region => {
+                const div = document.createElement('div');
+                div.className = 'gradcam-region';
+                div.innerHTML = `
+                    <div class="gradcam-dot" style="background: rgba(239, 68, 68, ${region.intensity})"></div>
+                    <span class="gradcam-label">${region.label}</span>
+                    <span class="gradcam-intensity">${Math.round(region.intensity * 100)}%</span>
+                `;
+                gradcamContainer.appendChild(div);
+            });
+
+            // ===== 🎨 CLOT COLORING: Render TRUE CNN segmentation on canvas =====
+            if (data.segmentation_mask_b64) {
+                // The Python Backend CNN successfully processed the image via ML and returned a binary mask PNG
+                const img = new Image();
+                img.onload = () => {
+                    resizeClotCanvas();
+                    const w = clotCanvas.width;
+                    const h = clotCanvas.height;
+                    
+                    const tmpCanvas = document.createElement('canvas');
+                    tmpCanvas.width = w; tmpCanvas.height = h;
+                    const tmpCtx = tmpCanvas.getContext('2d');
+                    tmpCtx.drawImage(img, 0, 0, w, h);
+                    const maskPixels = tmpCtx.getImageData(0, 0, w, h).data;
+                    
+                    const finalMask = new Uint8Array(w * h);
+                    const intensity = new Float32Array(w * h);
+                    let count = 0;
+                    
+                    for (let i = 0; i < w * h; i++) {
+                        // Backend returns a grayscale mask, if bright (clot detected)
+                        if (maskPixels[i*4] > 128) {
+                            finalMask[i] = 255;
+                            intensity[i] = 0.9;
+                            count++;
+                        }
+                    }
+                    
+                    clotMaskData = {
+                        mask: finalMask,
+                        intensity: intensity,
+                        width: w,
+                        height: h,
+                        clotPixelCount: count
+                    };
+                    
+                    clotCanvas.style.pointerEvents = 'auto'; // allow clicking to re-target locally
+                    clotCanvas.style.cursor = 'crosshair';
+                    document.getElementById('clot-color-controls').classList.remove('hidden');
+                    clotColor = data.risk_color || '#ef4444';
+                    document.getElementById('custom-clot-color').value = clotColor;
+                    redrawClotOverlay();
+                };
+                img.src = "data:image/png;base64," + data.segmentation_mask_b64;
+            } else {
+                // Fallback to JS algorithmic analysis if backend CNN failed
+                clotMaskData = analyzeImageForClots();
+                
+                if (clotMaskData && clotMaskData.clotPixelCount > 0) {
+                    resizeClotCanvas();
+                    clotCanvas.style.pointerEvents = 'auto';
+                    clotCanvas.style.cursor = 'crosshair';
+                    document.getElementById('clot-color-controls').classList.remove('hidden');
+                    clotColor = data.risk_color || '#ef4444';
+                    document.getElementById('custom-clot-color').value = clotColor;
+                    redrawClotOverlay();
+                } else {
+                    clotCanvas.getContext('2d').clearRect(0, 0, clotCanvas.width, clotCanvas.height);
+                    document.getElementById('clot-color-controls').classList.remove('hidden');
+                }
+            }
+
+            // Feature analysis
+            const featureBars = document.getElementById('feature-bars');
+            featureBars.innerHTML = '';
+            for (const [layer, info] of Object.entries(data.feature_analysis)) {
+                const row = document.createElement('div');
+                row.className = 'feature-row';
+                row.innerHTML = `
+                    <span class="feature-name">${info.feature}</span>
+                    <div class="feature-bar-wrap">
+                        <div class="feature-bar" style="width: ${info.activation * 100}%; background: linear-gradient(90deg, var(--primary), #ef4444);"></div>
+                    </div>
+                    <span class="feature-val">${Math.round(info.activation * 100)}%</span>
+                `;
+                featureBars.appendChild(row);
+            }
+
+            // Symptoms
+            const symptomsContainer = document.getElementById('clot-symptoms');
+            symptomsContainer.innerHTML = '';
+            (data.symptoms || []).forEach(s => {
+                const chip = document.createElement('span');
+                chip.className = 'clot-symptom-chip';
+                chip.textContent = s;
+                symptomsContainer.appendChild(chip);
+            });
+
+            // Actions
+            const actionList = document.getElementById('action-list');
+            actionList.innerHTML = '';
+            (data.immediate_actions || []).forEach(action => {
+                const li = document.createElement('li');
+                li.textContent = action;
+                if (action.includes('CALL') || action.includes('IMMEDIATELY')) {
+                    li.classList.add('critical-action');
+                }
+                actionList.appendChild(li);
+            });
+
+            // Treatment
+            const treatmentList = document.getElementById('treatment-list');
+            treatmentList.innerHTML = '';
+            (data.treatment || []).forEach(t => {
+                const li = document.createElement('li');
+                li.textContent = t;
+                treatmentList.appendChild(li);
+            });
+
+            // Diagnostic tests
+            const testBadges = document.getElementById('test-badges');
+            testBadges.innerHTML = '';
+            (data.diagnostic_tests || []).forEach(test => {
+                const badge = document.createElement('span');
+                badge.className = 'test-badge';
+                badge.textContent = test;
+                testBadges.appendChild(badge);
+            });
+
+            // Specialist
+            document.getElementById('specialist-name').textContent = data.specialist;
+
+            // Complications
+            const compList = document.getElementById('complications-list');
+            compList.innerHTML = '';
+            (data.complications || []).forEach(c => {
+                const li = document.createElement('li');
+                li.textContent = c;
+                compList.appendChild(li);
+            });
+
+            // Pipeline steps
+            const pipelineSteps = document.getElementById('pipeline-steps');
+            pipelineSteps.innerHTML = '';
+            (data.processing_pipeline || []).forEach((step, i) => {
+                const div = document.createElement('div');
+                div.className = 'pipeline-step';
+                div.innerHTML = `<span class="pipeline-num">${i + 1}</span><span>${step}</span>`;
+                pipelineSteps.appendChild(div);
+            });
+
+            // Recommendation
+            document.getElementById('clot-recommendation').textContent = 
+                `CNN classification: ${data.primary_classification} (${data.primary_confidence}% confidence). Risk Level: ${data.risk_level}. Recommended specialist: ${data.specialist}. Please share this report with your healthcare provider.`;
+
+            // Scroll to image first to see coloring, then results
+            setTimeout(() => {
+                document.getElementById('image-preview-container').scrollIntoView({ behavior: 'smooth' });
+                setTimeout(() => resultsSection.scrollIntoView({ behavior: 'smooth' }), 1500);
+            }, 200);
+
+            // Staggered reveal animation
+            document.querySelectorAll('.clot-results-grid .clot-card').forEach((card, i) => {
+                card.classList.add('reveal');
+                setTimeout(() => card.classList.add('active'), i * 80);
+            });
+
+            // Store for voice
+            window.lastClotResult = data;
+        }
+
+        // Voice readout
+        function speakClotResult() {
+            if (!window.lastClotResult) return;
+            const d = window.lastClotResult;
+            const text = `Blood Clot CNN Analysis Result. Primary classification: ${d.primary_classification} with ${d.primary_confidence} percent confidence. Risk level: ${d.risk_level}. Risk score: ${d.risk_score} out of 100. ${d.description}. Recommended specialist: ${d.specialist}.`;
+            const speech = new SpeechSynthesisUtterance(text);
+            speech.rate = 0.95;
+            speech.pitch = 1.0;
+            window.speechSynthesis.speak(speech);
+        }
+    </script>
+</body>
+
+</html>

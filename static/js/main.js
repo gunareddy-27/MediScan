@@ -296,34 +296,142 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // 🔬 SkinScan AI Implementation
     const skinInput = document.getElementById('skin-image');
-    skinInput.addEventListener('change', async (e) => {
-        const file = e.target.files[0];
-        if (!file) return;
+    if (skinInput) {
+        skinInput.addEventListener('change', async (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
 
-        const formData = new FormData();
-        formData.append('image', file);
+            const formData = new FormData();
+            formData.append('image', file);
 
-        const uploadBtn = document.querySelector('.skin-upload-container button');
-        uploadBtn.textContent = 'AI Analyzing Skin...';
-        uploadBtn.disabled = true;
+            const uploadBtn = document.querySelector('button[onclick*="skin-image"]');
+            uploadBtn.textContent = 'AI Analyzing Skin...';
+            uploadBtn.disabled = true;
+
+            try {
+                const res = await fetch('/skin_scan', {
+                    method: 'POST',
+                    body: formData
+                });
+                const data = await res.json();
+                
+                if (data.result) {
+                    alert(`SkinScan Results:\n${data.result} (${data.confidence} confidence)\n\nDetails: ${data.details}\nSuggestion: ${data.suggestion}`);
+                }
+            } catch (err) {
+                alert('SkinScan processing failed.');
+            } finally {
+                uploadBtn.textContent = 'Upload Tissue/Skin';
+                uploadBtn.disabled = false;
+            }
+        });
+    }
+
+    // 📄 Medical Report Analyzer
+    const reportInput = document.getElementById('report-file');
+    if (reportInput) {
+        reportInput.addEventListener('change', async (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const formData = new FormData();
+            formData.append('report', file);
+
+            const uploadBtn = document.querySelector('button[onclick*="report-file"]');
+            uploadBtn.textContent = 'AI Studying Report...';
+            uploadBtn.disabled = true;
+
+            try {
+                const res = await fetch('/analyze_report', {
+                    method: 'POST',
+                    body: formData
+                });
+                const data = await res.json();
+                
+                if (data.status === 'success') {
+                    // Show result section
+                    document.getElementById('result-section').classList.remove('hidden');
+                    const reportSection = document.getElementById('report-result-section');
+                    reportSection.style.display = 'block';
+                    reportSection.classList.add('active');
+
+                    document.getElementById('report-type-badge').textContent = data.report_type;
+                    document.getElementById('report-timestamp').textContent = data.timestamp;
+                    document.getElementById('report-ai-analysis').textContent = data.ai_analysis;
+
+                    const vitalsList = document.getElementById('report-vitals-list');
+                    vitalsList.innerHTML = '';
+                    for (const [key, val] of Object.entries(data.extracted_data)) {
+                        const li = document.createElement('li');
+                        li.style.margin = '5px 0';
+                        li.innerHTML = `<strong>${key}:</strong> ${val}`;
+                        vitalsList.appendChild(li);
+                    }
+
+                    const explanationsList = document.getElementById('report-explanations');
+                    explanationsList.innerHTML = '';
+                    data.explanations.forEach(exp => {
+                        const div = document.createElement('div');
+                        div.style.marginBottom = '10px';
+                        div.innerHTML = `<strong>${exp.parameter}:</strong> ${exp.explanation}`;
+                        explanationsList.appendChild(div);
+                    });
+
+                    reportSection.scrollIntoView({ behavior: 'smooth' });
+                }
+            } catch (err) {
+                alert('Report analysis failed.');
+            } finally {
+                uploadBtn.textContent = 'Study Report';
+                uploadBtn.disabled = false;
+            }
+        });
+    }
+
+    // 💊 Pharmacy AI Lookup
+    window.searchMedicines = async () => {
+        const input = document.getElementById('medicine-search-input');
+        const query = input.value.trim();
+        if (!query) return alert('Please enter a disease name!');
 
         try {
-            const res = await fetch('/skin_scan', {
-                method: 'POST',
-                body: formData
-            });
+            const res = await fetch(`/search_medicines?disease=${encodeURIComponent(query)}`);
             const data = await res.json();
-            
-            if (data.result) {
-                alert(`SkinScan Results:\n${data.result} (${data.confidence} confidence)\n\nDetails: ${data.details}\nSuggestion: ${data.suggestion}`);
+
+            if (data.medications) {
+                // Reuse existing prediction display logic or show alert
+                document.getElementById('result-section').classList.remove('hidden');
+                document.getElementById('predicted-disease').textContent = data.disease;
+                document.getElementById('disease-desc').textContent = data.description;
+                document.getElementById('confidence-val').textContent = "Database Lookup";
+                
+                const medList = document.getElementById('medications-list');
+                medList.innerHTML = '';
+                data.medications.forEach(m => {
+                    const li = document.createElement('li');
+                    li.textContent = m;
+                    li.style.color = '#10b981';
+                    medList.appendChild(li);
+                });
+
+                const precautionsList = document.getElementById('precautions-list');
+                precautionsList.innerHTML = '';
+                data.precautions.forEach(p => {
+                    const li = document.createElement('li');
+                    li.textContent = p;
+                    precautionsList.appendChild(li);
+                });
+
+                document.getElementById('result-section').scrollIntoView({ behavior: 'smooth' });
+            } else if (data.suggestions) {
+                alert(`Condition not found exactly. Did you mean: ${data.suggestions.join(', ')}?`);
+            } else {
+                alert(data.error || 'No information found.');
             }
         } catch (err) {
-            alert('SkinScan processing failed.');
-        } finally {
-            uploadBtn.textContent = 'Upload Image';
-            uploadBtn.disabled = false;
+            alert('Medicine lookup failed.');
         }
-    });
+    };
 
     // 🔬 Feedback & Active Learning System
     window.submitFeedback = async (isCorrect) => {
