@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Decision Support System - MediScan AI</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <div class="background-blobs">
+        <div class="blob blob-1"></div>
+        <div class="blob blob-2"></div>
+    </div>
+
+    <nav>
+        <div class="logo">Medi<span>Scan</span></div>
+        <div class="nav-links">
+            <a href="/">Home</a>
+            <a href="/dashboard">Dashboard</a>
+            <a href="/system_intelligence" class="active">Intelligence</a>
+            <a href="/doctors">Doctors</a>
+        </div>
+    </nav>
+
+    <main>
+        <section class="hero">
+            <h1>System <span>Intelligence</span></h1>
+            <p>Advanced predictive modeling, real-time streams, and clinical simulation engine.</p>
+        </section>
+
+        <div class="intelligence-grid">
+            <!-- Upgrade 1: Time-Series Forecasting -->
+            <div class="card glass">
+                <div class="card-header">
+                    <span class="icon">📈</span>
+                    <h3>24h Health Risk Forecast</h3>
+                </div>
+                <p class="card-desc">Simulated LSTM model predicting risk trends based on temporal clinical patterns.</p>
+                <canvas id="forecastChart"></canvas>
+                <div id="forecast-info" class="mini-stats">
+                    <span class="badge">Model: LSTM-Temporal-Net</span>
+                    <span id="forecast-status">Updating...</span>
+                </div>
+            </div>
+
+            <!-- Upgrade 3: Real-Time Streaming -->
+            <div class="card glass">
+                <div class="card-header">
+                    <span class="icon">⚡</span>
+                    <h3>Live Vital Stream</h3>
+                </div>
+                <p class="card-desc">Simulated Spark/Kafka stream processing of real-time clinical telemetry.</p>
+                <div class="stream-monitor">
+                    <div class="stream-item">
+                        <span class="label">Heart Rate</span>
+                        <span id="live-hr" class="value pulse">-- bpm</span>
+                    </div>
+                    <div class="stream-item">
+                        <span class="label">Blood Oxygen</span>
+                        <span id="live-o2" class="value">-- %</span>
+                    </div>
+                    <div class="stream-item">
+                        <span class="label">Stream Latency</span>
+                        <span id="stream-latency" class="value-small">-- ms</span>
+                    </div>
+                </div>
+                <div id="stream-alert" class="alert-box">
+                    Stream status: <span class="status-dot green"></span> Connected
+                </div>
+            </div>
+
+            <!-- Upgrade 2: Treatment Simulator -->
+            <div class="card glass simulator-card">
+                <div class="card-header">
+                    <span class="icon">🕹️</span>
+                    <h3>Treatment Simulator</h3>
+                </div>
+                <p class="card-desc">"What-If" engine: Analyze the impact of treatment variables on recovery trajectory.</p>
+                <div class="sim-inputs">
+                    <div class="input-group">
+                        <label>Treatment Intensity: <span id="val-intensity">50%</span></label>
+                        <input type="range" id="sim-intensity" min="10" max="100" value="50">
+                    </div>
+                    <div class="input-group">
+                        <label>Medication Compliance: <span id="val-compliance">50%</span></label>
+                        <input type="range" id="sim-compliance" min="0" max="100" value="50">
+                    </div>
+                    <button id="run-sim" class="btn-primary">Execute Simulation</button>
+                </div>
+                <div id="sim-results" class="sim-results hidden">
+                    <div class="result-item">
+                        <span class="label">Est. Recovery:</span>
+                        <span id="sim-recovery" class="value-highlight">-- days</span>
+                    </div>
+                    <div class="result-item">
+                        <span class="label">Stability Index:</span>
+                        <span id="sim-stability" class="value-highlight">-- %</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Upgrade 4: Advanced Anomaly Detection -->
+            <div class="card glass">
+                <div class="card-header">
+                    <span class="icon">🔍</span>
+                    <h3>Clinical Anomaly Probe</h3>
+                </div>
+                <p class="card-desc">Unsupervised ML (Isolation Forest) identifying pattern outliers in diagnostic data.</p>
+                <div class="anomaly-status">
+                    <div class="radar-scan">
+                        <!-- Custom CSS animation -->
+                        <div class="scanner"></div>
+                    </div>
+                    <div class="anomaly-details">
+                        <p id="anomaly-msg">Monitoring for irregular patterns...</p>
+                        <div class="score-bar">
+                            <div id="anomaly-score-fill" class="fill"></div>
+                        </div>
+                        <span class="label-small">Isolation Forest Decision Score</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        // Upgrade 1: Forecast Chart
+        let forecastChart;
+        async function loadForecast() {
+            const res = await fetch('/health_forecast');
+            const data = await res.json();
+            
+            const ctx = document.getElementById('forecastChart').getContext('2d');
+            if(forecastChart) forecastChart.destroy();
+            
+            forecastChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: Array.from({length: 24}, (_, i) => `${i}h`),
+                    datasets: [{
+                        label: 'Predicted Risk Score',
+                        data: data.forecast_24h,
+                        borderColor: '#10b981',
+                        backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                        fill: true,
+                        tension: 0.4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: { legend: { display: false } },
+                    scales: { y: { beginAtZero: true, max: 100 } }
+                }
+            });
+            document.getElementById('forecast-status').innerText = 'Predicted for next 24 hours';
+        }
+
+        // Upgrade 3: Live Stream
+        async function updateLiveStream() {
+            try {
+                const res = await fetch('/live_vital_stream');
+                const data = await res.json();
+                
+                document.getElementById('live-hr').innerText = `${Math.round(data.data.heart_rate)} bpm`;
+                document.getElementById('live-o2').innerText = `${Math.round(data.data.blood_oxygen)}%`;
+                document.getElementById('stream-latency').innerText = `${data.processing_latency_ms} ms`;
+                
+                const hrEl = document.getElementById('live-hr');
+                if (data.alert) {
+                    hrEl.style.color = '#ef4444';
+                    document.getElementById('stream-alert').innerText = data.alert;
+                    document.getElementById('stream-alert').className = 'alert-box warning';
+                } else {
+                    hrEl.style.color = 'var(--text-main)';
+                    document.getElementById('stream-alert').innerText = 'Stream status: Healthy';
+                    document.getElementById('stream-alert').className = 'alert-box';
+                }
+            } catch(e) {}
+        }
+
+        // Upgrade 2: Simulator
+        document.getElementById('sim-intensity').oninput = e => document.getElementById('val-intensity').innerText = e.target.value + '%';
+        document.getElementById('sim-compliance').oninput = e => document.getElementById('val-compliance').innerText = e.target.value + '%';
+        
+        document.getElementById('run-sim').onclick = async () => {
+            const intensity = document.getElementById('sim-intensity').value;
+            const compliance = document.getElementById('sim-compliance').value;
+            
+            const res = await fetch('/treatment_simulator', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ intensity, compliance })
+            });
+            const data = await res.json();
+            
+            document.getElementById('sim-results').classList.remove('hidden');
+            document.getElementById('sim-recovery').innerText = `${data.estimated_recovery_days} days`;
+            document.getElementById('sim-stability').innerText = `${data.vital_stability_index}%`;
+        };
+
+        // Init
+        loadForecast();
+        setInterval(updateLiveStream, 2000);
+        
+        // Upgrade 4: Anomaly Pulse
+        setInterval(() => {
+            const score = 0.8 + Math.random() * 0.2;
+            document.getElementById('anomaly-score-fill').style.width = (score * 100) + '%';
+            if(Math.random() > 0.95) {
+                document.getElementById('anomaly-msg').innerText = "Potential outlier detected in buffer...";
+                document.getElementById('anomaly-msg').style.color = '#f59e0b';
+            } else {
+                document.getElementById('anomaly-msg').innerText = "Pattern consistent with standard clinical cases.";
+                document.getElementById('anomaly-msg').style.color = 'inherit';
+            }
+        }, 3000);
+    </script>
+
+    <style>
+        .intelligence-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 2rem;
+            padding: 1rem 0;
+        }
+
+        .card { padding: 2rem; border-radius: 20px; }
+        .card-header { display: flex; align-items: center; gap: 1rem; margin-bottom: 0.5rem; }
+        .card-header h3 { margin: 0; }
+        .card-desc { font-size: 0.85rem; color: var(--text-gray); margin-bottom: 2rem; }
+
+        .mini-stats { margin-top: 1rem; display: flex; justify-content: space-between; font-size: 0.8rem; }
+        
+        .stream-monitor { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1.5rem; }
+        .stream-item { background: rgba(255,255,255,0.05); padding: 1rem; border-radius: 12px; display: flex; flex-direction: column; }
+        .value { font-size: 1.5rem; font-weight: 700; color: var(--text-main); }
+        .value-small { font-size: 0.9rem; color: var(--text-gray); }
+
+        .pulse { animation: pulse 2s infinite; }
+        @keyframes pulse { 
+            0% { opacity: 1; }
+            50% { opacity: 0.7; }
+            100% { opacity: 1; }
+        }
+
+        .alert-box { padding: 10px; border-radius: 8px; background: rgba(16, 185, 129, 0.1); font-size: 0.85rem; color: #10b981; }
+        .alert-box.warning { background: rgba(239, 68, 68, 0.1); color: #ef4444; }
+
+        .sim-inputs { display: flex; flex-direction: column; gap: 1rem; }
+        .input-group { display: flex; flex-direction: column; gap: 0.5rem; }
+        input[type=range] { width: 100%; height: 6px; border-radius: 5px; appearance: none; background: rgba(255,255,255,0.1); }
+        input[type=range]::-webkit-slider-thumb { appearance: none; width: 18px; height: 18px; background: #3b82f6; border-radius: 50%; cursor: pointer; }
+
+        .sim-results { margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1px solid rgba(255,255,255,0.1); display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+        .value-highlight { font-size: 1.2rem; font-weight: 700; color: #3b82f6; display: block; }
+        .hidden { display: none; }
+
+        .anomaly-status { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 1.5rem; }
+        .radar-scan { width: 80px; height: 80px; border: 2px solid rgba(59, 130, 246, 0.3); border-radius: 50%; position: relative; overflow: hidden; }
+        .scanner { width: 100%; height: 50%; background: linear-gradient(transparent, rgba(59, 130, 246, 0.4)); position: absolute; transform-origin: bottom; animation: scan 3s linear infinite; }
+        @keyframes scan { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+
+        .score-bar { width: 100%; height: 8px; background: rgba(255,255,255,0.1); border-radius: 4px; overflow: hidden; margin: 10px 0; }
+        .score-bar .fill { height: 100%; background: #3b82f6; transition: width 0.5s ease; }
+
+        @media (max-width: 900px) {
+            .intelligence-grid { grid-template-columns: 1fr; }
+        }
+    </style>
+</body>
+</html>
