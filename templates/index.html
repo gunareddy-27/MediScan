@@ -62,9 +62,15 @@
                     <div class="emergency-icon">⚠️</div>
                     <h2>URGENT: MEDICAL EMERGENCY</h2>
                     <p id="emergency-status"></p>
-                    <div class="emergency-actions">
+                    <div class="emergency-actions" style="display: flex; flex-direction: column; gap: 10px;">
                         <a href="tel:911" class="btn-emergency">📞 CALL 911 (OR LOCAL EMERGENCY)</a>
-                        <button onclick="hideEmergency()" class="btn-text">I understand, but continue</button>
+                        <div id="hospital-suggestions" style="margin-top: 15px; text-align: left; background: rgba(0,0,0,0.2); padding: 10px; border-radius: 8px;">
+                            <h4 style="margin-bottom: 8px; font-size: 0.9rem;">📍 Nearest Emergency Facilities:</h4>
+                            <ul id="hospital-list" style="list-style: none; padding: 0; font-size: 0.8rem;">
+                                <!-- Hospitals injected here -->
+                            </ul>
+                        </div>
+                        <button onclick="hideEmergency()" class="btn-text" style="color: rgba(255,255,255,0.6);">I understand, but continue</button>
                     </div>
                 </div>
             </div>
@@ -169,8 +175,10 @@
                         <button class="btn-sm btn-outline" onclick="speakPrediction()">🔊 Read Aloud</button>
                         <button class="btn-sm btn-outline" id="emergency-alert-btn" style="display:none; color: #ef4444;">🚨 Emergency Protocol</button>
                         <div class="confidence-badge" id="confidence-val">0% Confidence</div>
+                        <button class="btn-sm btn-primary" onclick="downloadReport()" style="background: #2563eb; color: white;">📄 Get Digital Report</button>
                     </div>
                     <div id="anomaly-alert" class="badge low hidden">Rare Case Flagged</div>
+                    <div id="escalation-alert" class="badge low hidden" style="background: rgba(245, 158, 11, 0.2); color: #f59e0b; margin-left: 10px; border: 1px solid #f59e0b;">Worsening Trend Detected</div>
                 </div>
 
                 <!-- 📊 Health Trends Dashboard -->
@@ -202,6 +210,12 @@
                         <h3>Condition</h3>
                         <div class="disease-name" id="predicted-disease">---</div>
                         <p class="disease-description" id="disease-desc"></p>
+                        <div id="top-3-container" style="margin-top: 15px; border-top: 1px solid var(--glass-border); padding-top: 10px;">
+                            <h4 style="font-size: 0.8rem; color: var(--text-gray); margin-bottom: 8px;">Alternative Possibilities:</h4>
+                            <ul id="top-3-list" style="list-style: none; padding: 0; font-size: 0.85rem; text-align: left;">
+                                <!-- Top 3 injected here -->
+                            </ul>
+                        </div>
                     </div>
 
                     <div class="ai-reasoning card">

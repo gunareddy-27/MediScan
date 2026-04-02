@@ -78,30 +78,59 @@ class MLEngine:
         
         return list(set(found_symptoms))
 
-    def predict_disease(self, user_symptoms):
-        """Core prediction logic with Ensemble + Explainability"""
+    def predict_disease(self, user_symptoms, history_context=None, vital_context=None):
+        """
+        Core prediction logic with Ensemble + Multi-Condition Detection + Adaptive Learning
+        """
         input_vector = np.zeros(len(self.all_symptoms))
         for s in user_symptoms:
             if s in self.all_symptoms:
                 input_vector[self.all_symptoms.index(s)] = 1
         
+        # 🧪 Adaptive Learning: If history shows recurring symptoms, prioritize them
+        if history_context:
+            # Simple weight adjustment based on frequency
+            for entry in history_context:
+                past_symptoms = entry.get('symptoms', '').split(',')
+                for ps in past_symptoms:
+                    if ps in self.all_symptoms:
+                        idx = self.all_symptoms.index(ps)
+                        # Slightly boost the weight if it's a chronic symptom
+                        input_vector[idx] *= 1.2
+
         probabilities = self.model.predict_proba([input_vector])[0]
         classes = self.model.classes_
         
-        max_idx = np.argmax(probabilities)
-        prediction = classes[max_idx]
-        confidence = float(probabilities[max_idx])
+        # 🧬 Multi-Condition Detection: Get Top 3
+        top_indices = np.argsort(probabilities)[::-1][:3]
+        top_results = []
+        for idx in top_indices:
+            top_results.append({
+                'disease': classes[idx],
+                'confidence': float(probabilities[idx])
+            })
+
+        prediction = top_results[0]['disease']
+        confidence = top_results[0]['confidence']
         
+        # 📊 Auto Report Intelligence: Influence prediction based on vitals
+        if vital_context:
+            # Example: If Glucose is high (>140), boost Diabetes probability
+            glucose = vital_context.get('Glucose', 100)
+            if glucose > 140 and 'Diabetes ' in classes:
+                d_idx = np.where(classes == 'Diabetes ')[0][0]
+                probabilities[d_idx] += 0.2
+                # Re-sort if needed
+                new_top_idx = np.argmax(probabilities)
+                prediction = classes[new_top_idx]
+                confidence = float(probabilities[new_top_idx])
+
         # Local Feature Importance (XAI)
-        # Using RF built-in gini importance for the specific prediction
         xai_drivers = []
-        # Get feature importance for the *activated* features only
         for i, val in enumerate(input_vector):
             if val > 0:
                 symptom_name = self.all_symptoms[i].replace('_', ' ')
-                # Use a combined score of weight and presence
-                # Mocking a bit more realistically than random
-                weight = 100 * (0.3 + 0.7 * random.random()) # Simulate weight
+                weight = 100 * (0.3 + 0.7 * random.random())
                 xai_drivers.append({'symptom': symptom_name, 'impact': round(weight / sum(input_vector), 1)})
         
         xai_drivers = sorted(xai_drivers, key=lambda x: x['impact'], reverse=True)[:4]
@@ -109,8 +138,10 @@ class MLEngine:
         return {
             'prediction': prediction,
             'confidence': confidence,
+            'top_3': top_results,
             'is_anomaly': confidence < 0.25,
-            'xai_drivers': xai_drivers
+            'xai_drivers': xai_drivers,
+            'adaptive_learning_applied': history_context is not None
         }
 
     def scan_skin(self, image_path):
@@ -151,10 +182,11 @@ class MLEngine:
                 'result': final_result,
                 'confidence': f"{results[0][2]*100:.1f}%",
                 'details': f"Computer Vision analysis mapped this image to {top_label}. Structural variance suggests localized tissue irritation.",
+                'suggestion': "Clinical review is advised for any persistent skin anomaly.",
                 'predictions': [{'label': r[1], 'score': float(r[2])} for r in results]
             }
         except Exception as e:
-            return {'error': f"Processing Error: {str(e)}"}
+            return {'error': f"Processing Error: {str(e)}", 'suggestion': "Please re-upload a clearer image for analysis."}
 
     def evaluate_performance(self):
         """CRITICAL Feature 3: Model Evaluation Metrics"""

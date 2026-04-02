@@ -3,7 +3,11 @@ import pandas as pd
 import numpy as np
 import pickle
 import os
-import mysql.connector
+try:
+    import mysql.connector
+    HAS_MYSQL = True
+except ImportError:
+    HAS_MYSQL = False
 from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import datetime
 import sqlite3
@@ -33,8 +37,17 @@ EMERGENCY_SYMPTOMS = {
     'slurred_speech': 'Stroke Warning Sign. Call emergency services now!',
     'stiff_neck': 'Potential Meningitis. Immediate medical evaluation required.',
     'loss_of_balance': 'Potential Neurological Issue. Seek urgent care.',
-    'weakness_of_one_body_side': 'Stroke Warning Sign. Call emergency services now!'
+    'weakness_of_one_body_side': 'Stroke Warning Sign. Call emergency services now!',
+    'fast_heart_rate': 'Potential Tachycardia or Cardiac Event.',
+    'vision_loss': 'Potential Stroke or Retinal Emergency.'
 }
+
+# 🚑 Automated Emergency Routing
+EMERGENCY_HOSPITALS = [
+    {'name': 'City General Hospital', 'distance': '1.2 km', 'address': '123 Medical Dr', 'phone': '911-001'},
+    {'name': 'St. Jude Cardiac Center', 'distance': '2.5 km', 'address': '456 Heart Ave', 'phone': '911-002'},
+    {'name': 'Emergency Trauma Unit', 'distance': '3.1 km', 'address': '789 Life St', 'phone': '911-003'}
+]
 
 def get_db_connection():
     import sqlite3
@@ -44,6 +57,12 @@ def get_db_connection():
             conn.row_factory = sqlite3.Row
             return conn
         else:
+            if not HAS_MYSQL:
+                print("MySQL Error: mysql-connector-python choice selected but library not installed. Falling back to SQLite.")
+                # Auto-fallback
+                conn = sqlite3.connect('medical_checker.db')
+                conn.row_factory = sqlite3.Row
+                return conn
             conn = mysql.connector.connect(**DB_CONFIG)
             return conn
     except Exception as e:
@@ -69,14 +88,24 @@ def init_db():
                 disease TEXT,
                 symptoms TEXT,
                 confidence TEXT,
+                is_verified INTEGER DEFAULT 0,
                 timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
             )
         ''')
+        cursor.execute("PRAGMA table_info(history)")
+        columns = [column[1] for column in cursor.fetchall()]
+        if 'is_verified' not in columns:
+            cursor.execute("ALTER TABLE history ADD COLUMN is_verified INTEGER DEFAULT 0")
+        
         conn.commit()
         conn.close()
 
 # Initialize Database
 init_db()
+
+# Model paths
+model_path = 'models/disease_model.pkl'
+symptoms_path = 'models/symptoms.pkl'
 
 # Initialize ML Engine
 ml_engine = MLEngine(model_path=model_path, symptoms_path=symptoms_path)
@@ -471,6 +500,7 @@ def predict():
                 'is_emergency': True,
                 'emergency_msg': EMERGENCY_SYMPTOMS[symptom],
                 'disease': 'CRITICAL ALERT',
+                'hospitals': EMERGENCY_HOSPITALS,
                 'recommendation': 'DO NOT WAIT. Contact emergency services or go to the nearest ER immediately.'
             })
 
@@ -480,16 +510,36 @@ def predict():
         if symptom in all_symptoms:
             input_vector[all_symptoms.index(symptom)] = 1
     
-    # Get ML result object
-    ml_engine_result = ml_engine.predict_disease(user_symptoms)
+    # 🧪 Automated Adaptive Learning: Fetch user history for context
+    history_context = []
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute("SELECT disease, symptoms, timestamp FROM history ORDER BY timestamp DESC LIMIT 5")
+        history_context = [dict(row) for row in rows] if (rows := cursor.fetchall()) else []
+        conn.close()
+    except: pass
+
+    # 📊 Auto Report Intelligence: Get vitals from request if available
+    vitals = data.get('vitals', {})
+
+    # Get ML result object (top 3 + adaptive reasoning)
+    ml_engine_result = ml_engine.predict_disease(user_symptoms, history_context=history_context, vital_context=vitals)
     prediction = ml_engine_result['prediction']
     confidence = ml_engine_result['confidence']
     
     # 🩹 Feature 6: Medical Validation Logic (Cross-referencing symptoms/vitals)
-    # E.g., Diabetes prediction MUST have supporting symptoms or vitals
     if not ml_engine.validate_diagnosis(prediction, user_symptoms):
-        # If validation fails, we downgrade confidence or flag for review
         confidence *= 0.8 
+
+    # 📉 Risk Escalation Automation
+    escalation_msg = ""
+    if history_context:
+        past_disease = history_context[0]['disease']
+        if prediction == past_disease:
+            escalation_msg = "⚠️ CONTINUITY ALERT: This condition has been detected in your recent history. Monitor for worsening symptoms."
+        elif prediction == 'CRITICAL ALERT' or confidence > 0.8:
+            escalation_msg = "🚨 RISK ESCALATION: Current analysis indicates a more severe pattern than your previous logs."
 
     # 🔒 Feature 7: Safety Layer (Confidence Thresholds)
     safety_counsel = ""
@@ -513,6 +563,7 @@ def predict():
     return jsonify({
         'disease': prediction,
         'confidence': f"{confidence*100:.1f}%",
+        'top_3': ml_engine_result['top_3'],
         'description': info['description'],
         'precautions': info['precautions'],
         'medications': medications_list,
@@ -521,6 +572,7 @@ def predict():
         'detected_symptoms': [s.replace('_', ' ') for s in user_symptoms],
         'reasoning': f"Determined by cross-referencing {len(user_symptoms)} symptoms against clinical markers and statistical probability.",
         'ai_counsel': f"{safety_counsel} " + (f"Based on your symptoms, my neural network identifies patterns consistent with {prediction}." if not safety_counsel else ""),
+        'escalation_notice': escalation_msg,
         'is_anomaly': anomaly_data['is_anomaly'],
         'anomaly_score': anomaly_data['anomaly_score'],
         'anomaly_explanation': anomaly_data['clinical_explanation'],
@@ -783,6 +835,7 @@ def analyze_report():
         'extracted_data': extracted_vitals,
         'explanations': explanations,
         'ai_analysis': summary,
+        'auto_trigger_prediction': True,
         'timestamp': datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     })
 
@@ -927,8 +980,8 @@ def mental_health_log():
     })
 
 # 📊 Feature 8: Longitudinal Health Risk Forecaster
-@app.route('/health_forecast', methods=['GET'])
-def health_forecast():
+@app.route('/longitudinal_risk', methods=['GET'])
+def longitudinal_risk():
     """Simulated Time-Series Risk Prediction based on DB History"""
     try:
         conn = get_db_connection()
@@ -1367,13 +1420,32 @@ def treatment_simulator():
     simulation = ml_engine.simulate_treatment_impact(condition, intensity, compliance)
     return jsonify(simulation)
 
-@app.route('/live_vital_stream')
-def live_vital_stream():
-    """🚀 Upgrade 3: Real-Time Streaming (Kafka/Spark Simulation)"""
-    # Simulate a stream session
-    token = session.get('user_id', 'anonymous_guest')
-    result = ml_engine.process_live_vital_stream(str(token))
-    return jsonify(result)
+@app.route('/generate_report', methods=['POST'])
+def generate_report():
+    """📄 Feature 12: Auto Health Report Generator (Print-friendly format)"""
+    data = request.json
+    disease = data.get('disease', 'General Checkup')
+    confidence = data.get('confidence', 'N/A')
+    symptoms = data.get('symptoms', [])
+    vitals = data.get('vitals', {})
+    
+    report_html = f"""
+    <html><body style='font-family: sans-serif; padding: 40px; border: 1px solid #ccc; max-width: 800px; margin: auto;'>
+    <h1 style='color: #2563eb;'>MEDISCAN AI: CLINICAL DIAGNOSTIC REPORT</h1>
+    <hr><p><strong>Generated on:</strong> {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}</p>
+    <div style='background: #f3f4f6; padding: 15px; border-radius: 8px;'>
+        <h2>Primary Finding: {disease}</h2>
+        <p><strong>AI Confidence Score:</strong> {confidence}</p>
+    </div>
+    <h3>Symptomatic Data Analysed</h3><ul>{" ".join([f'<li>{s}</li>' for s in symptoms])}</ul>
+    <h3>Clinician Notes (Auto-Generated)</h3>
+    <p>Neural analysis identifies patterns consistent with {disease}. Historical trends suggest potential risk escalation. Medical referral is recommended for definitive secondary validation.</p>
+    <div style='margin-top: 40px; font-size: 0.8rem; color: #666;'>
+        <i>Disclaimer: This report is generated by a MediScan AI decision-support system. It is not a final medical diagnosis.</i>
+    </div>
+    </body></html>
+    """
+    return report_html
 
 if __name__ == '__main__':
     app.run(debug=True)

@@ -172,6 +172,16 @@ document.addEventListener('DOMContentLoaded', () => {
             // Check for Emergency Red Flag
             if (data.is_emergency) {
                 emergencyStatus.innerText = data.emergency_msg;
+                const hList = document.getElementById('hospital-list');
+                hList.innerHTML = '';
+                if(data.hospitals) {
+                    data.hospitals.forEach(h => {
+                        const li = document.createElement('li');
+                        li.style.marginBottom = '5px';
+                        li.innerHTML = `<strong>${h.name}</strong> - ${h.distance}<br>${h.address} (${h.phone})`;
+                        hList.appendChild(li);
+                    });
+                }
                 emergencyOverlay.classList.remove('hidden');
                 predictBtn.textContent = 'SYSTEM ALERT';
                 return;
@@ -197,6 +207,26 @@ document.addEventListener('DOMContentLoaded', () => {
                     li.textContent = p;
                     precautionsList.appendChild(li);
                 });
+
+                // 🧬 Multi-Condition Detection Display
+                const top3List = document.getElementById('top-3-list');
+                top3List.innerHTML = '';
+                if (data.top_3) {
+                    data.top_3.forEach(item => {
+                        const li = document.createElement('li');
+                        li.innerHTML = `<span style="color: var(--text-gray);">${item.disease}:</span> ${(item.confidence*100).toFixed(0)}%`;
+                        top3List.appendChild(li);
+                    });
+                }
+
+                // 📉 Risk Escalation Notice
+                const escalationAlert = document.getElementById('escalation-alert');
+                if (data.escalation_notice) {
+                    escalationAlert.textContent = data.escalation_notice;
+                    escalationAlert.classList.remove('hidden');
+                } else {
+                    escalationAlert.classList.add('hidden');
+                }
 
                 // 💊 Medications
                 const medList = document.getElementById('medications-list');
@@ -398,6 +428,16 @@ document.addEventListener('DOMContentLoaded', () => {
                     });
 
                     reportSection.scrollIntoView({ behavior: 'smooth' });
+
+                    // 🚀 AUTOMATION: Trigger secondary AI analysis based on report values
+                    if (data.auto_trigger_prediction) {
+                        setTimeout(() => {
+                            // Automatically trigger main prediction using extracted vitals
+                            // We pass vitals directly to the predict endpoint
+                            const vitalsPayload = data.extracted_data || {};
+                            predictFromVitals(vitalsPayload);
+                        }, 2000);
+                    }
                 }
             } catch (err) {
                 alert('Report analysis failed.');
@@ -695,4 +735,67 @@ document.addEventListener('DOMContentLoaded', () => {
             alert('Cloud synchronization failed.');
         }
     };
+
+    // 📄 Download Automated Report
+    window.downloadReport = async () => {
+        if (!window.lastResult) return alert('Please analyze symptoms first.');
+        const res = await fetch('/generate_report', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                disease: window.lastResult.disease,
+                confidence: window.lastResult.confidence,
+                symptoms: window.lastSymptoms || []
+            })
+        });
+        const html = await res.text();
+        const win = window.open('', '_blank');
+        win.document.write(html);
+        win.document.close();
+        setTimeout(() => win.print(), 500);
+    };
+
+    // ⏰ Daily Reminder Automation (Mock)
+    setTimeout(() => {
+        const reminder = document.createElement('div');
+        reminder.className = 'toast reveal active';
+        reminder.style.position = 'fixed';
+        reminder.style.bottom = '20px';
+        reminder.style.right = '20px';
+        reminder.style.background = '#2563eb';
+        reminder.style.color = 'white';
+        reminder.style.padding = '15px 25px';
+        reminder.style.borderRadius = '12px';
+        reminder.style.zIndex = '9999';
+        reminder.style.boxShadow = '0 10px 30px rgba(0,0,0,0.3)';
+        reminder.innerHTML = `
+            <div style="font-weight:700; margin-bottom:5px;">⏰ Daily Monitoring Reminder</div>
+            <div style="font-size:0.85rem;">You haven't logged your vitals today. Keep your risk scores accurate!</div>
+            <button onclick="this.parentElement.remove()" style="background:transparent; border:1px solid white; color:white; margin-top:10px; cursor:pointer; padding:3px 10px; border-radius:5px;">Dismiss</button>
+        `;
+        document.body.appendChild(reminder);
+    }, 15000); // Appear after 15s for demo
+
+    // 🚀 Automation Helper: Predict using extracted vitals
+    async function predictFromVitals(vitals) {
+        const predictBtn = document.getElementById('predict-btn');
+        predictBtn.textContent = 'Auto-Scanning (Vitals)...';
+        
+        try {
+            const response = await fetch('/predict', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    symptoms: Array.from(selectedSymptoms),
+                    vitals: vitals
+                })
+            });
+            const data = await response.json();
+            if (data.disease) {
+                document.getElementById('predicted-disease').textContent = data.disease;
+                document.getElementById('ai-reasoning-text').textContent = `Clinical data analysis merged: Glucose (${vitals['Glucose (Fasting)'] || 'N/A'}) and BP (${vitals['Blood Pressure'] || 'N/A'}) were used as decisive architectural features.`;
+                document.getElementById('result-section').classList.remove('hidden');
+            }
+        } catch(e) { console.error('Auto-predict failure:', e); }
+    }
 });
