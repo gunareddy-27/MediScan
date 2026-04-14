@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pharmacy AI Lookup - MediScan AI</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        .result-header,
+        .prediction-grid,
+        .card,
+        .dashboard-card,
+        .footer-content,
+        .checker-container {
+            text-align: center !important;
+        }
+
+        .header-actions,
+        .footer-actions,
+        .feedback-actions,
+        .detected-badges,
+        .xai-list {
+            display: flex !important;
+            justify-content: center !important;
+            flex-wrap: wrap !important;
+            gap: 15px !important;
+        }
+
+        #medications-list, #precautions-list {
+            list-style: disc !important;
+            padding-left: 20px !important;
+            text-align: left !important;
+            margin: 15px 0 !important;
+        }
+
+        #medications-list li, #precautions-list li {
+            margin-bottom: 8px !important;
+            color: #e2e8f0 !important;
+        }
+
+        .result-header,
+        .card,
+        .dashboard-card {
+            display: flex !important;
+            flex-direction: column !important;
+            align-items: center !important;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="background-blobs">
+        <div class="blob blob-1"></div>
+        <div class="blob blob-2"></div>
+        <div class="blob blob-3"></div>
+    </div>
+
+    <nav>
+        <div class="logo">Medi<span>Scan</span></div>
+        <div class="nav-links">
+            <a href="/">Home</a>
+            <a href="/skin_scan_page">📸 SkinScan AI</a>
+            <a href="/report_analyzer_page">📄 Report Analyzer</a>
+            <a href="/pharmacy_page" class="active">💊 Pharmacy AI</a>
+            <a href="/clot_detection">🩸 Clot Detection</a>
+            <a href="/dashboard">Dashboard</a>
+            <a href="/system_intelligence">Intelligence</a>
+            <a href="/doctors">Doctors</a>
+        </div>
+    </nav>
+
+    <main>
+        <section class="hero">
+            <h1>Pharmacy AI <span>Lookup</span></h1>
+            <p>Search for medications and typical treatments for any condition.</p>
+        </section>
+
+        <section class="checker-container glass">
+            <div class="symptom-input-wrapper">
+                <div class="voice-diagnosis card" style="width: 100%; max-width: 600px;">
+                    <h3>Disease / Medication Lookup</h3>
+                    <p class="input-hint">Enter the name of a disease or condition to see common treatments.</p>
+                    <div class="search-box" style="margin-top: 20px;">
+                        <input type="text" id="medicine-search-input" placeholder="Enter disease name (e.g. Diabetes)..."
+                            style="background: rgba(255,255,255,0.05); border: 1px solid var(--glass-border); border-radius: 5px; color: white; padding: 12px; width: 100%;">
+                        
+                        <div style="margin-top: 15px;">
+                            <label style="font-size: 0.8rem; color: var(--text-gray);">Current Medications (Optional - for conflict check):</label>
+                            <input type="text" id="current-meds-input" placeholder="e.g. Ibuprofen, Paracetamol..."
+                                style="background: rgba(255,255,255,0.05); border: 1px solid var(--glass-border); border-radius: 5px; color: white; padding: 10px; width: 100%; margin-top: 5px;">
+                        </div>
+
+                        <button id="pharmacy-search-btn" class="btn-primary"
+                            style="margin-top: 20px; width: 100%;">🚀 Analyze Treatments</button>
+                        <button id="view-pharmacy-results-btn" class="btn-secondary" style="background: #10b981; opacity: 0.5; cursor: not-allowed; margin-top: 10px; width: 100%;" disabled>✅ View Results (Wait for lookup)</button>
+                    </div>
+                </div>
+            </div>
+
+            <div id="result-section" class="result-section hidden">
+                <div class="result-header">
+                    <h2>Pharmacy Intelligence</h2>
+                </div>
+
+                <div class="prediction-grid">
+                    <div class="main-prediction card">
+                        <h3>Condition</h3>
+                        <div class="disease-name" id="predicted-disease">---</div>
+                        <p class="disease-description" id="disease-desc"></p>
+                    </div>
+
+                    <div class="medications-card card">
+                        <h3>Common Medications</h3>
+                        <ul id="medications-list"></ul>
+                        <p class="input-hint" style="margin-top: 10px; font-size: 0.75rem; color: #ef4444;">*Always
+                            consult a doctor before taking medication.</p>
+                    </div>
+
+                    <div class="precautions-card card">
+                        <h3>Recommended Precautions</h3>
+                        <ul id="precautions-list"></ul>
+                    </div>
+
+                    <!-- 🗺️ Minute Recovery Roadmap -->
+                    <div class="roadmap-card card" style="grid-column: span 2;">
+                        <h3>7-Day Treatment Roadmap (Minute Details)</h3>
+                        <div class="roadmap-steps" id="roadmap-list" style="display: flex; flex-direction: column; gap: 10px; margin-top: 15px;">
+                            <!-- Roadmap steps injected here -->
+                        </div>
+                    </div>
+
+                    <!-- ⚠️ Conflict Detection Card -->
+                    <div id="conflict-card" class="card hidden" style="grid-column: span 2; border: 1px solid #ef4444; background: rgba(239, 68, 68, 0.05);">
+                        <h3 style="color: #ef4444;">⚠️ SAFETY ALERT: DRUG CONFLICTS</h3>
+                        <ul id="conflicts-list" style="color: #fca5a5; font-size: 0.9rem; padding-left: 20px;"></ul>
+                    </div>
+                </div>
+
+                <div class="result-footer">
+                    <div class="footer-actions">
+                        <button class="btn-outline" onclick="location.reload()">🔄 New Search</button>
+                        <a href="/doctors" class="btn-secondary">Find Specialists</a>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer class="site-footer">
+        <div class="footer-bottom">
+            <p>&copy; 2026 MediScan AI. All rights reserved.</p>
+            <p class="disclaimer-text"><strong>MEDICAL DISCLAIMER:</strong> MediScan AI is for informational purposes
+                only. It is not a substitute for professional medical advice, diagnosis, or treatment.</p>
+        </div>
+    </footer>
+
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+    <script>
+        const ALL_SYMPTOMS = [];
+    </script>
+</body>
+
+</html>

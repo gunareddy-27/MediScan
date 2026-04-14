@@ -10,8 +10,128 @@ document.addEventListener('DOMContentLoaded', () => {
 
     let selectedSymptoms = new Set();
 
+    // ==========================================
+    // 💊 Pharmacy AI Lookup (Moved to Top)
+    // ==========================================
+    const pharmacyBtn = document.getElementById('pharmacy-search-btn');
+    if (pharmacyBtn) {
+        pharmacyBtn.addEventListener('click', async () => {
+        const input = document.getElementById('medicine-search-input');
+        const currentMedsInput = document.getElementById('current-meds-input');
+        const query = input.value ? input.value.trim() : '';
+        const currentMeds = currentMedsInput ? currentMedsInput.value.trim() : '';
+
+        if (!query) return alert('Please enter a condition name!');
+
+        // UI Feedback
+        pharmacyBtn.textContent = '🔍 System Analyzing...';
+        pharmacyBtn.disabled = true;
+
+        try {
+            const url = `/search_medicines?disease=${encodeURIComponent(query)}&current_meds=${encodeURIComponent(currentMeds)}`;
+            const res = await fetch(url);
+            const data = await res.json();
+
+            if (data.disease) {
+                document.getElementById('result-section').classList.remove('hidden');
+                document.getElementById('predicted-disease').textContent = data.disease;
+                document.getElementById('disease-desc').textContent = data.description || 'No description available.';
+                
+                const medList = document.getElementById('medications-list');
+                if (medList) {
+                    medList.innerHTML = '';
+                    if (data.medications && data.medications.length > 0) {
+                        data.medications.forEach(m => {
+                            const li = document.createElement('li');
+                            li.textContent = m;
+                            li.style.color = '#10b981';
+                            li.style.fontWeight = 'bold';
+                            medList.appendChild(li);
+                        });
+                    } else {
+                        medList.innerHTML = '<li style="color: #94a3b8; list-style: none;">No specific medications found in current database. Please consult a professional.</li>';
+                    }
+                }
+
+                const precautionsList = document.getElementById('precautions-list');
+                if (precautionsList) {
+                    precautionsList.innerHTML = '';
+                    if (data.precautions && data.precautions.length > 0) {
+                        data.precautions.forEach(p => {
+                            const li = document.createElement('li');
+                            li.textContent = p;
+                            precautionsList.appendChild(li);
+                        });
+                    } else {
+                        precautionsList.innerHTML = '<li style="color: #94a3b8; list-style: none;">No precautions listed.</li>';
+                    }
+                }
+
+                // 🗺️ Render Recovery Roadmap
+                const roadmapList = document.getElementById('roadmap-list');
+                if (roadmapList) {
+                    roadmapList.innerHTML = '';
+                    if (data.roadmap && data.roadmap.length > 0) {
+                        data.roadmap.forEach(step => {
+                            const stepDiv = document.createElement('div');
+                            stepDiv.className = 'roadmap-step';
+                            stepDiv.style.background = 'rgba(255,255,255,0.02)';
+                            stepDiv.style.padding = '10px';
+                            stepDiv.style.borderRadius = '8px';
+                            stepDiv.style.borderLeft = '4px solid var(--primary)';
+                            stepDiv.innerHTML = `
+                                <div style="font-weight: bold; color: var(--primary); font-size: 0.8rem;">${step.day}</div>
+                                <div style="font-size: 0.9rem; margin-top: 4px;">${step.action}</div>
+                            `;
+                            roadmapList.appendChild(stepDiv);
+                        });
+                    }
+                }
+
+                // ⚠️ Show Conflicts if any
+                const conflictCard = document.getElementById('conflict-card');
+                const conflictsList = document.getElementById('conflicts-list');
+                if (conflictCard && conflictsList) {
+                    if (data.conflicts && data.conflicts.length > 0) {
+                        conflictsList.innerHTML = '';
+                        data.conflicts.forEach(c => {
+                            const li = document.createElement('li');
+                            li.textContent = c;
+                            conflictsList.appendChild(li);
+                        });
+                        conflictCard.classList.remove('hidden');
+                    } else {
+                        conflictCard.classList.add('hidden');
+                    }
+                }
+
+                document.getElementById('result-section').scrollIntoView({ behavior: 'smooth' });
+                
+                const viewBtn = document.getElementById('view-pharmacy-results-btn');
+                if (viewBtn) {
+                    viewBtn.disabled = false;
+                    viewBtn.style.opacity = '1';
+                    viewBtn.style.cursor = 'pointer';
+                    viewBtn.textContent = '✅ View Full Protocol';
+                }
+            } else if (data.suggestions) {
+                alert(`Condition not found. Suggestions: ${data.suggestions.join(', ')}`);
+            } else {
+                alert(data.error || 'No information found.');
+            }
+        } catch (err) {
+            console.error('Pharmacy Error:', err);
+            alert('Cloud Pharmacy engine failed. Check console for details.');
+        } finally {
+            pharmacyBtn.textContent = '🚀 Analyze Treatments';
+            pharmacyBtn.disabled = false;
+        }
+    });
+}
+
     // Symptom Search & Suggestions
-    symptomSearch.addEventListener('input', (e) => {
+    if (symptomSearch) {
+        symptomSearch.addEventListener('input', (e) => {
         const value = e.target.value.toLowerCase();
         suggestionsBox.innerHTML = '';
 
@@ -36,6 +156,7 @@ document.addEventListener('DOMContentLoaded', () => {
             suggestionsBox.style.display = 'none';
         }
     });
+}
 
     const updatePulseMeter = () => {
         const fill = document.getElementById('pulse-fill');
@@ -120,7 +241,8 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     // Predict Action
-    predictBtn.addEventListener('click', async () => {
+    if (predictBtn) {
+        predictBtn.addEventListener('click', async () => {
         const description = descriptionArea.value;
         const confidenceVal = document.getElementById('confidence-val');
         const diseaseDesc = document.getElementById('disease-desc');
@@ -323,175 +445,169 @@ document.addEventListener('DOMContentLoaded', () => {
             predictBtn.disabled = false;
         }
     });
+}
 
     // 🔬 SkinScan AI Implementation
     const skinInput = document.getElementById('skin-image');
+    const analyzeSkinBtn = document.getElementById('analyze-skin-btn');
+    const skinFilename = document.getElementById('skin-filename');
+
     if (skinInput) {
-        skinInput.addEventListener('change', async (e) => {
+        skinInput.addEventListener('change', (e) => {
             const file = e.target.files[0];
-            if (!file) return;
-
-            const formData = new FormData();
-            formData.append('image', file);
-
-            const uploadBtn = document.querySelector('button[onclick*="skin-image"]');
-            uploadBtn.textContent = 'AI Analyzing Skin...';
-            uploadBtn.disabled = true;
-
-            try {
-                const res = await fetch('/skin_scan', {
-                    method: 'POST',
-                    body: formData
-                });
-                const data = await res.json();
-                
-                if (data.result) {
-                    // Update main prediction display for better visibility
-                    predictedDisease.textContent = data.result;
-                    diseaseDesc.textContent = `Visual Analysis Result: ${data.details}`;
-                    document.getElementById('confidence-val').textContent = `${data.confidence} Confidence`;
-                    document.getElementById('ai-reasoning-text').textContent = data.suggestion;
-                    resultSection.classList.remove('hidden');
-                    resultSection.scrollIntoView({ behavior: 'smooth' });
-                    
-                    // Show custom alert
-                    const msg = `SkinScan Results:\n${data.result} (${data.confidence})\n\nDetails: ${data.details}`;
-                    console.log(msg);
+            if (file) {
+                if (skinFilename) {
+                    skinFilename.textContent = `Selected: ${file.name}`;
+                    skinFilename.style.display = 'block';
                 }
-            } catch (err) {
-                alert('SkinScan processing failed.');
-            } finally {
-                uploadBtn.textContent = 'Upload Tissue/Skin';
-                uploadBtn.disabled = false;
+                if (analyzeSkinBtn) analyzeSkinBtn.style.display = 'block';
             }
         });
+
+        if (analyzeSkinBtn) {
+            analyzeSkinBtn.addEventListener('click', async () => {
+                const file = skinInput.files[0];
+                if (!file) return;
+
+                analyzeSkinBtn.textContent = 'AI Analyzing Tissue...';
+                analyzeSkinBtn.disabled = true;
+
+                const formData = new FormData();
+                formData.append('image', file);
+
+                try {
+                    const res = await fetch('/skin_scan', {
+                        method: 'POST',
+                        body: formData
+                    });
+                    const data = await res.json();
+
+                    if (data.result) {
+                        const predDisease = document.getElementById('predicted-disease');
+                        const dDesc = document.getElementById('disease-desc');
+                        const resSection = document.getElementById('result-section');
+                        const aiReasoning = document.getElementById('ai-reasoning-text');
+                        const confVal = document.getElementById('confidence-val');
+
+                        if (predDisease) predDisease.textContent = data.result;
+                        if (dDesc) dDesc.textContent = `Visual Analysis Result: ${data.details}`;
+                        if (confVal) confVal.textContent = `${data.confidence} Confidence`;
+                        if (aiReasoning) aiReasoning.textContent = data.suggestion;
+                        
+                        if (resSection) {
+                            resSection.classList.remove('hidden');
+                            resSection.scrollIntoView({ behavior: 'smooth' });
+                            
+                            const viewBtn = document.getElementById('view-skin-results-btn');
+                            if (viewBtn) {
+                                viewBtn.disabled = false;
+                                viewBtn.style.opacity = '1';
+                                viewBtn.style.cursor = 'pointer';
+                                viewBtn.textContent = '✅ View Results Now';
+                                viewBtn.onclick = () => resSection.scrollIntoView({ behavior: 'smooth' });
+                            }
+                        }
+                    }
+                } catch (err) {
+                    alert('SkinScan processing failed.');
+                } finally {
+                    analyzeSkinBtn.textContent = '🔬 Start AI Scan';
+                    analyzeSkinBtn.disabled = false;
+                }
+            });
+        }
     }
 
     // 📄 Medical Report Analyzer
     const reportInput = document.getElementById('report-file');
+    const analyzeReportBtn = document.getElementById('analyze-report-btn');
+    const selectedFilename = document.getElementById('selected-filename');
+
     if (reportInput) {
-        reportInput.addEventListener('change', async (e) => {
+        reportInput.addEventListener('change', (e) => {
             const file = e.target.files[0];
-            if (!file) return;
-
-            const formData = new FormData();
-            formData.append('report', file);
-
-            const uploadBtn = document.querySelector('button[onclick*="report-file"]');
-            uploadBtn.textContent = 'AI Studying Report...';
-            uploadBtn.disabled = true;
-
-            try {
-                const res = await fetch('/analyze_report', {
-                    method: 'POST',
-                    body: formData
-                });
-                const data = await res.json();
-                
-                if (data.status === 'success') {
-                    // Show result section
-                    document.getElementById('result-section').classList.remove('hidden');
-                    const reportSection = document.getElementById('report-result-section');
-                    reportSection.style.display = 'block';
-                    reportSection.classList.add('active');
-
-                    document.getElementById('report-type-badge').textContent = data.report_type;
-                    document.getElementById('report-timestamp').textContent = data.timestamp;
-                    document.getElementById('report-ai-analysis').textContent = data.ai_analysis;
-
-                    // Automatically integrate extracted metrics into symptom selection
-                    if (data.extracted_data) {
-                        Object.keys(data.extracted_data).forEach(metric => {
-                            // Find matching symptoms in our database for better prediction
-                            const normalize = metric.toLowerCase();
-                            if (normalize.includes('glucose')) addSymptom('increased_appetite'); // Proxy
-                            if (normalize.includes('pressure')) addSymptom('headache'); // Proxy
-                        });
-                    }
-
-                    const vitalsList = document.getElementById('report-vitals-list');
-                    vitalsList.innerHTML = '';
-                    for (const [key, val] of Object.entries(data.extracted_data)) {
-                        const li = document.createElement('li');
-                        li.style.margin = '5px 0';
-                        li.innerHTML = `<strong>${key}:</strong> ${val}`;
-                        vitalsList.appendChild(li);
-                    }
-
-                    const explanationsList = document.getElementById('report-explanations');
-                    explanationsList.innerHTML = '';
-                    data.explanations.forEach(exp => {
-                        const div = document.createElement('div');
-                        div.style.marginBottom = '10px';
-                        div.innerHTML = `<strong>${exp.parameter}:</strong> ${exp.explanation}`;
-                        explanationsList.appendChild(div);
-                    });
-
-                    reportSection.scrollIntoView({ behavior: 'smooth' });
-
-                    // 🚀 AUTOMATION: Trigger secondary AI analysis based on report values
-                    if (data.auto_trigger_prediction) {
-                        setTimeout(() => {
-                            // Automatically trigger main prediction using extracted vitals
-                            // We pass vitals directly to the predict endpoint
-                            const vitalsPayload = data.extracted_data || {};
-                            predictFromVitals(vitalsPayload);
-                        }, 2000);
-                    }
+            if (file) {
+                if (selectedFilename) {
+                    selectedFilename.textContent = `Selected: ${file.name}`;
+                    selectedFilename.style.display = 'block';
                 }
-            } catch (err) {
-                alert('Report analysis failed.');
-            } finally {
-                uploadBtn.textContent = 'Study Report';
-                uploadBtn.disabled = false;
+                if (analyzeReportBtn) analyzeReportBtn.style.display = 'block';
             }
         });
+
+        if (analyzeReportBtn) {
+            analyzeReportBtn.addEventListener('click', async () => {
+                const file = reportInput.files[0];
+                if (!file) return;
+
+                analyzeReportBtn.textContent = 'AI Studying Report...';
+                analyzeReportBtn.disabled = true;
+
+                const formData = new FormData();
+                formData.append('report', file);
+
+                try {
+                    const res = await fetch('/analyze_report', {
+                        method: 'POST',
+                        body: formData
+                    });
+                    const data = await res.json();
+
+                    if (data.status === 'success') {
+                        document.getElementById('result-section').classList.remove('hidden');
+                        const reportSection = document.getElementById('report-result-section');
+                        if (reportSection) {
+                            reportSection.style.display = 'block';
+                            reportSection.classList.add('active');
+                        }
+
+                        document.getElementById('report-type-badge').textContent = data.report_type;
+                        document.getElementById('report-timestamp').textContent = data.timestamp;
+                        document.getElementById('report-ai-analysis').textContent = data.ai_analysis;
+
+                        const vitalsList = document.getElementById('report-vitals-list');
+                        if (vitalsList) {
+                            vitalsList.innerHTML = '';
+                            Object.entries(data.extracted_data).forEach(([key, val]) => {
+                                const li = document.createElement('li');
+                                li.style.margin = '5px 0';
+                                li.innerHTML = `<strong>${key}:</strong> ${val}`;
+                                vitalsList.appendChild(li);
+                            });
+                        }
+
+                        const explanationsList = document.getElementById('report-explanations');
+                        if (explanationsList) {
+                            explanationsList.innerHTML = '';
+                            data.explanations.forEach(exp => {
+                                const div = document.createElement('div');
+                                div.style.marginBottom = '10px';
+                                div.innerHTML = `<strong>${exp.parameter}:</strong> ${exp.explanation}`;
+                                explanationsList.appendChild(div);
+                            });
+                        }
+
+                        document.getElementById('result-section').scrollIntoView({ behavior: 'smooth' });
+                        
+                        const viewBtn = document.getElementById('view-report-results-btn');
+                        if (viewBtn) {
+                            viewBtn.disabled = false;
+                            viewBtn.style.opacity = '1';
+                            viewBtn.style.cursor = 'pointer';
+                            viewBtn.textContent = '✅ View Breakdown Now';
+                            viewBtn.onclick = () => document.getElementById('result-section').scrollIntoView({ behavior: 'smooth' });
+                        }
+                    }
+                } catch (err) {
+                    alert('Report analysis failed.');
+                } finally {
+                    analyzeReportBtn.textContent = '🚀 Start Analysis';
+                    analyzeReportBtn.disabled = false;
+                }
+            });
+        }
     }
 
-    // 💊 Pharmacy AI Lookup
-    window.searchMedicines = async () => {
-        const input = document.getElementById('medicine-search-input');
-        const query = input.value.trim();
-        if (!query) return alert('Please enter a disease name!');
-
-        try {
-            const res = await fetch(`/search_medicines?disease=${encodeURIComponent(query)}`);
-            const data = await res.json();
-
-            if (data.medications) {
-                // Reuse existing prediction display logic or show alert
-                document.getElementById('result-section').classList.remove('hidden');
-                document.getElementById('predicted-disease').textContent = data.disease;
-                document.getElementById('disease-desc').textContent = data.description;
-                document.getElementById('confidence-val').textContent = "Database Lookup";
-                
-                const medList = document.getElementById('medications-list');
-                medList.innerHTML = '';
-                data.medications.forEach(m => {
-                    const li = document.createElement('li');
-                    li.textContent = m;
-                    li.style.color = '#10b981';
-                    medList.appendChild(li);
-                });
-
-                const precautionsList = document.getElementById('precautions-list');
-                precautionsList.innerHTML = '';
-                data.precautions.forEach(p => {
-                    const li = document.createElement('li');
-                    li.textContent = p;
-                    precautionsList.appendChild(li);
-                });
-
-                document.getElementById('result-section').scrollIntoView({ behavior: 'smooth' });
-            } else if (data.suggestions) {
-                alert(`Condition not found exactly. Did you mean: ${data.suggestions.join(', ')}?`);
-            } else {
-                alert(data.error || 'No information found.');
-            }
-        } catch (err) {
-            alert('Medicine lookup failed.');
-        }
-    };
 
     // 🔬 Feedback & Active Learning System
     window.submitFeedback = async (isCorrect) => {
@@ -629,8 +745,11 @@ document.addEventListener('DOMContentLoaded', () => {
             const res = await fetch('/dashboard_data');
             const data = await res.json();
             
-            const ctx = document.getElementById('symptomChart').getContext('2d');
+            const ctxEl = document.getElementById('symptomChart');
             const dashboard = document.getElementById('health-dashboard');
+            if (!ctxEl || !dashboard) return;
+            
+            const ctx = ctxEl.getContext('2d');
             dashboard.style.display = 'block';
 
             if (healthChart) healthChart.destroy();
@@ -701,6 +820,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const ht = parseFloat(document.getElementById('v-height').value) / 100;
         const wt = parseFloat(document.getElementById('v-weight').value);
         const bmiVal = document.getElementById('bmi-val');
+        if (!bmiVal) return;
         
         if (ht > 0 && wt > 0) {
             const bmi = (wt / (ht * ht)).toFixed(1);

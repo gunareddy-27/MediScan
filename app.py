@@ -139,7 +139,7 @@ DISEASE_INFO = {
         'precautions': ['Stop taking the suspected drug', 'Seek immediate medical help for breathing issues', 'Stay hydrated', 'Consult your doctor'],
         'medications': ['Epinephrine (for severe reactions)', 'Antihistamines', 'Corticosteroids']
     },
-    'Peptic ulcer diseae': {
+    'Peptic ulcer disease': {
         'description': 'Sores that develop on the lining of the stomach, lower esophagus, or small intestine.',
         'precautions': ['Avoid NSAIDs like Ibuprofen', 'Reduce stress levels', 'Quit smoking', 'Avoid spicy and acidic foods'],
         'medications': ['Amoxicillin (if H. pylori)', 'Clarithromycin', 'Pantoprazole', 'Sucralfate']
@@ -149,7 +149,7 @@ DISEASE_INFO = {
         'precautions': ['Strict adherence to ART medication', 'Practice safe sex', 'Maintain a high-nutrient diet', 'Get regular viral load tests'],
         'medications': ['Tenofovir', 'Lamivudine', 'Dolutegravir (ART Combination)']
     },
-    'Diabetes ': {
+    'Diabetes': {
         'description': 'A group of diseases that result in too much sugar in the blood (high blood glucose).',
         'precautions': ['Monitor blood sugar daily', 'Low-carb, high-fiber diet', 'Regular physical activity', 'Stay hydrated'],
         'medications': ['Metformin', 'Insulin', 'Glipizide', 'Empagliflozin (Jardiance)']
@@ -164,7 +164,7 @@ DISEASE_INFO = {
         'precautions': ['Keep inhaler handy at all times', 'Avoid dust and smoke', 'Identify and avoid triggers', 'Perform breathing exercises'],
         'medications': ['Albuterol (Ventolin)', 'Salbutamol', 'Fluticasone', 'Budisonide']
     },
-    'Hypertension ': {
+    'Hypertension': {
         'description': 'A condition where the force of the blood against the artery walls is too high (High Blood Pressure).',
         'precautions': ['Reduce salt/sodium intake', 'Manage stress through meditation', 'Daily aerobic exercise', 'Monitor BP regularly'],
         'medications': ['Amlodipine', 'Telmisartan', 'Lisinopril', 'Hydrochlorothiazide']
@@ -475,6 +475,18 @@ def check_medication_conflict(proposed_medications, user_current_medications):
                 conflicts.append(f"{pm} + {cm}: {INTERACTION_DB[(cm, pm)]}")
                 
     return conflicts
+
+@app.route('/skin_scan_page')
+def skin_scan_page():
+    return render_template('skin_scan.html')
+
+@app.route('/report_analyzer_page')
+def report_analyzer_page():
+    return render_template('report_analyzer.html')
+
+@app.route('/pharmacy_page')
+def pharmacy_page():
+    return render_template('pharmacy.html')
 
 @app.route('/')
 def index():
@@ -839,43 +851,109 @@ def analyze_report():
         'timestamp': datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     })
 
-# 💊 Feature 12: Medicine Search Route
-@app.route('/search_medicines', methods=['GET'])
+# 💊 Feature 12: Medicine Search Route (CSV Semantic Search)
+# 💊 Feature 12: Medicine Search Route (CSV Semantic Search + Conflict Check)
+# 💊 Feature 12: Medicine Search Route (CSV Semantic Search + Conflict Check)
+@app.route('/search_medicines')
 def search_medicines():
-    """Lookup medications for a given disease"""
-    disease = request.args.get('disease', '').strip()
-    if not disease:
-        return jsonify({'error': 'Please provide a disease name'}), 400
+    """Lookup medications for a given disease with fuzzy matching and conflict detection"""
+    import difflib
     
-    # Search for disease in our database
-    match = None
-    for d in DISEASE_INFO.keys():
-        if disease.lower() == d.lower():
-            match = d
-            break
+    query = request.args.get('disease', '').strip().lower()
+    current_meds_raw = request.args.get('current_meds', '').strip()
+    
+    if not query:
+        return jsonify({'error': 'No disease name provided'}), 400
+
+    try:
+        # Load the medicines dataset
+        csv_path = 'pharmacy_medicines_dataset.csv'
+        if not os.path.exists(csv_path):
+            return jsonify({'error': 'Medical dataset not found.'}), 404
             
-    if match:
-        info = DISEASE_INFO[match]
-        return jsonify({
-            'disease': match,
-            'medications': info.get('medications', []),
-            'description': info['description'],
-            'precautions': info['precautions']
-        })
-    else:
-        # Fuzzy search
-        results = []
-        for d in DISEASE_INFO.keys():
-            if disease.lower() in d.lower():
-                results.append(d)
+        try:
+            df = pd.read_csv(csv_path).fillna('')
+        except UnicodeDecodeError:
+            df = pd.read_csv(csv_path, encoding='latin1').fillna('')
+            
+        # Clean up columns and values (CRITICAL)
+        df.columns = [c.strip() for c in df.columns]
+        for col in df.columns:
+            if df[col].dtype == object:
+                df[col] = df[col].astype(str).str.strip()
         
-        if results:
+        disease_list = df['Disease'].tolist()
+        
+        # 1. Exact or Substring Match (Case-Insensitive)
+        # Try exact first
+        match_df = df[df['Disease'].str.lower() == query]
+        
+        # Then try substring
+        if match_df.empty:
+            match_df = df[df['Disease'].str.lower().str.contains(query, case=False)]
+            
+        # 2. Fuzzy Match as last resort
+        if match_df.empty:
+            close_matches = difflib.get_close_matches(query, [d.lower() for d in disease_list], n=1, cutoff=0.5)
+            if close_matches:
+                match_df = df[df['Disease'].str.lower() == close_matches[0]]
+
+        if not match_df.empty:
+            # Sort by length to get the shortest (most specific) match first
+            result = match_df.iloc[match_df['Disease'].str.len().argsort()].iloc[0]
+            
+            # Extract data using exact column names
+            meds_raw = result.get('Medications', '')
+            precs_raw = result.get('Precautions', '')
+            desc_raw = result.get('Description', '')
+            
+            medications = [m.strip() for m in str(meds_raw).split(',')] if meds_raw and str(meds_raw).lower() != 'nan' else []
+            precautions = [p.strip() for p in str(precs_raw).split(',')] if precs_raw and str(precs_raw).lower() != 'nan' else []
+            
+            # Ensure we have something in medications
+            if not medications and desc_raw:
+                # Fallback to DISEASE_INFO if CSV row is partially empty
+                for d_key, d_val in DISEASE_INFO.items():
+                    if result['Disease'].lower() in d_key.lower():
+                        medications = d_val.get('medications', [])
+                        break
+
+            # --- TOP LEVEL: Minute Step-by-Step Roadmap ---
+            try:
+                roadmap = generate_roadmap(result['Disease'])
+            except:
+                roadmap = DEFAULT_ROADMAP
+            
+            # --- TOP LEVEL: Conflict Detection ---
+            conflicts = []
+            if current_meds_raw:
+                user_meds = [m.strip() for m in current_meds_raw.split(',')]
+                conflicts = check_medication_conflict(medications, user_meds)
+            
             return jsonify({
-                'suggestions': results,
-                'message': 'Disease not found exactly. Did you mean one of these?'
+                'disease': result['Disease'],
+                'description': desc_raw or "No specific description available.",
+                'medications': medications,
+                'precautions': precautions,
+                'roadmap': roadmap,
+                'conflicts': conflicts,
+                'debug_count': len(medications)
             })
-        
-        return jsonify({'error': 'No medication information found for this condition.'}), 404
+            
+        # Suggestions if no match found
+        suggestions = [d for d in disease_list if d.lower().startswith(query[:3])]
+        if not suggestions:
+            suggestions = difflib.get_close_matches(query, disease_list, n=5, cutoff=0.3)
+
+        return jsonify({
+            'error': 'Condition not found in our database.',
+            'suggestions': sorted(list(set(suggestions)))[:5]
+        }), 404
+
+    except Exception as e:
+        print(f"Pharmacy Execution Error: {e}")
+        return jsonify({'error': f'System error: {str(e)}'}), 500
+
 
 # 🥗 Feature 4: AI-Powered Personalized Nutritionist
 @app.route('/get_nutrition_plan', methods=['POST'])
@@ -1446,6 +1524,7 @@ def generate_report():
     </body></html>
     """
     return report_html
+
 
 if __name__ == '__main__':
     app.run(debug=True)

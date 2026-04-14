@@ -41,6 +41,9 @@
         <div class="logo">Medi<span>Scan</span></div>
         <div class="nav-links">
             <a href="/">Home</a>
+            <a href="/skin_scan_page">📸 SkinScan AI</a>
+            <a href="/report_analyzer_page">📄 Report Analyzer</a>
+            <a href="/pharmacy_page">💊 Pharmacy AI</a>
             <a href="/clot_detection" class="nav-clot-link">🩸 Clot Detection</a>
             <a href="/dashboard">Dashboard</a>
             <a href="/system_intelligence">Intelligence</a>
@@ -76,35 +79,7 @@
             </div>
 
             <div class="symptom-input-wrapper">
-                <!-- 🕺 Body Map Feature -->
-                <div class="voice-diagnosis card">
-                    <h3>SkinScan AI (Beta)</h3>
-                    <p class="input-hint">Upload a photo of a rash or skin concern for visual analysis.</p>
-                    <div class="skin-upload-container">
-                        <input type="file" id="skin-image" accept="image/*" style="display: none;">
-                        <button class="btn-secondary" onclick="document.getElementById('skin-image').click()">Upload Tissue/Skin</button>
-                    </div>
-                </div>
 
-                <!-- 📄 Report Analyzer Card -->
-                <div class="voice-diagnosis card">
-                    <h3>Report Analyzer AI</h3>
-                    <p class="input-hint">Upload your medical report (PDF/Image) for automated analysis and explanation.</p>
-                    <div class="skin-upload-container">
-                        <input type="file" id="report-file" accept=".pdf,image/*" style="display: none;">
-                        <button class="btn-secondary" style="background: var(--secondary);" onclick="document.getElementById('report-file').click()">Study Report</button>
-                    </div>
-                </div>
-
-                <!-- 💊 Medicine Search Card -->
-                <div class="voice-diagnosis card">
-                    <h3>Pharmacy AI Lookup</h3>
-                    <p class="input-hint">Search for medications and typical treatments for any condition.</p>
-                    <div class="search-box" style="margin-top: 10px;">
-                        <input type="text" id="medicine-search-input" placeholder="Enter disease name..." style="background: rgba(255,255,255,0.05); border: 1px solid var(--glass-border); border-radius: 5px; color: white; padding: 8px;">
-                        <button class="btn-sm btn-secondary" onclick="searchMedicines()" style="margin-top: 5px;">Lookup Meds</button>
-                    </div>
-                </div>
 
                 <div class="body-map-container card">
                     <h3>Interactive Body Map</h3>
