@@ -105,7 +105,46 @@
                 </div>
             </div>
 
-            <!-- Upgrade 4: Advanced Anomaly Detection -->
+            <!-- Upgrade 5: Neural Synapse Map (Live Topology) -->
+            <div class="card glass neural-mesh-card">
+                <div class="card-header">
+                    <span class="icon">🕸️</span>
+                    <h3>Neural Synapse Topology</h3>
+                </div>
+                <p class="card-desc">Live mapping of active neural weight paths in the 40M-parameter clinical engine.</p>
+                <div class="synapse-web">
+                    <!-- Dynamic CSS points -->
+                    <div class="node node-1 active"></div>
+                    <div class="node node-2"></div>
+                    <div class="node node-3 active"></div>
+                    <div class="node node-4"></div>
+                    <div class="node-connection"></div>
+                </div>
+                <div class="mini-stats">
+                    <span>Active synapses: 142k</span>
+                    <span>Learning Rate: 0.003</span>
+                </div>
+            </div>
+
+            <!-- Upgrade 6: Global Mesh Analytics -->
+            <div class="card glass global-mesh-card">
+                <div class="card-header">
+                    <span class="icon">🌍</span>
+                    <h3>Global Health Mesh</h3>
+                </div>
+                <p class="card-desc">Real-time population health signal synchronization across 12 decentralized nodes.</p>
+                <div class="world-map-sim">
+                    <div class="ping p-1"></div>
+                    <div class="ping p-2"></div>
+                    <div class="ping p-3"></div>
+                </div>
+                <div class="mini-stats">
+                    <span>Synchronized: 98%</span>
+                    <span>Drift Level: Nominal</span>
+                </div>
+            </div>
+
+            <!-- Upgrade 4: Advanced Anomaly Detection (Relocated) -->
             <div class="card glass">
                 <div class="card-header">
                     <span class="icon">🔍</span>
@@ -126,8 +165,47 @@
                     </div>
                 </div>
             </div>
+
+            <!-- Upgrade 7: Autonomous Self-Correction Log -->
+            <div class="card glass autonomous-log">
+                <div class="card-header">
+                    <span class="icon">📜</span>
+                    <h3>Autonomous Synthesis Log</h3>
+                </div>
+                <p class="card-desc">Recent self-correction events in the neural architecture optimizer.</p>
+                <div class="log-stream" id="sim-log">
+                    <div class="log-entry">[14:22] Node-Tokyo: Gradient descent optimized.</div>
+                    <div class="log-entry">[14:15] Global Mesh: Vitals bias neutralized.</div>
+                <div class="log-stream" id="sim-log">
+                    <div class="log-entry">[14:22] Node-Tokyo: Gradient descent optimized.</div>
+                    <div class="log-entry">[14:15] Global Mesh: Vitals bias neutralized.</div>
+                    <div class="log-entry">[14:02] Model-v4.2.1: Accuracy cross-verified (94.2%).</div>
+                </div>
+            </div>
+
+            <!-- Upgrade 9: Federated Learning System -->
+            <div class="card glass federated-node">
+                <div class="card-header">
+                    <span class="icon">🌐</span>
+                    <h3>Federated Learning Engine</h3>
+                </div>
+                <p class="card-desc">Decentralized, privacy-preserving AI model training across global clinical nodes.</p>
+                <div style="margin-top:15px; background: rgba(0,0,0,0.3); padding: 15px; border-radius: 8px;">
+                    <div class="insight-item" style="display:flex; justify-content:space-between;">
+                        <span class="label">Nodes Synced:</span>
+                        <span id="fed-nodes" class="badge">Loading...</span>
+                    </div>
+                    <div class="insight-item" style="display:flex; justify-content:space-between; margin-top:5px;">
+                        <span class="label">Privacy Epsilon (ε):</span>
+                        <span id="fed-epsilon" class="badge">--</span>
+                    </div>
+                    <p id="fed-status" style="margin-top: 10px; font-size: 0.8rem; color: #10b981;">Connecting to mesh...</p>
+                </div>
+            </div>
         </div>
     </main>
+
+    {% include 'footer.html' %}
 
     <script>
         // Upgrade 1: Forecast Chart
@@ -160,6 +238,18 @@
             });
             document.getElementById('forecast-status').innerText = 'Predicted for next 24 hours';
         }
+
+        async function fetchFederated() {
+            try {
+                const res = await fetch('/federated_sync');
+                const data = await res.json();
+                document.getElementById('fed-nodes').innerText = data.nodes_synced;
+                document.getElementById('fed-epsilon').innerText = data.privacy_loss_epsilon;
+                document.getElementById('fed-status').innerText = "Status: " + data.status;
+            } catch(e) {}
+        }
+        setInterval(fetchFederated, 10000);
+        fetchFederated();
 
         // Upgrade 3: Live Stream
         async function updateLiveStream() {

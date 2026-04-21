@@ -465,43 +465,7 @@
     </main>
 
     <!-- Footer -->
-    <footer class="site-footer">
-        <div class="footer-content">
-            <div class="footer-brand">
-                <div class="logo">MediScan <span>AI</span></div>
-                <p>Empowering global health through accessible, high-fidelity artificial intelligence diagnostics and symptom analysis.</p>
-                <div class="trust-badges">
-                    <span class="badge">SECURED BY AI</span>
-                    <span class="badge">HIPAA READY</span>
-                    <span class="badge" style="border-color: rgba(239,68,68,0.3); color: #ef4444;">CNN v2.0</span>
-                </div>
-            </div>
-            
-            <div class="footer-section">
-                <h4>Quick Links</h4>
-                <ul class="footer-links">
-                    <li><a href="/">Symptom Checker</a></li>
-                    <li><a href="/clot_detection">Blood Clot Detection</a></li>
-                    <li><a href="/dashboard">Personal Health Vault</a></li>
-                    <li><a href="/doctors">Global Specialists</a></li>
-                </ul>
-            </div>
-
-            <div class="footer-section">
-                <h4>AI Engine</h4>
-                <ul class="footer-links">
-                    <li><a href="#">Clot CNN: v2.0.0</a></li>
-                    <li><a href="#">Model Accuracy: 96.8%</a></li>
-                    <li><a href="#">Pipeline: Active</a></li>
-                </ul>
-            </div>
-        </div>
-
-        <div class="footer-bottom">
-            <p>&copy; 2026 MediScan AI. All rights reserved.</p>
-            <p class="disclaimer-text"><strong>MEDICAL DISCLAIMER:</strong> MediScan AI is for informational purposes only. Blood clot detection results are simulated for academic demonstration and must NOT be used for actual clinical decisions.</p>
-        </div>
-    </footer>
+    {% include 'footer.html' %}
 
     <script src="{{ url_for('static', filename='js/main.js') }}"></script>
     <script>

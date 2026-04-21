@@ -149,13 +149,7 @@
         </section>
     </main>
 
-    <footer class="site-footer">
-        <div class="footer-bottom">
-            <p>&copy; 2026 MediScan AI. All rights reserved.</p>
-            <p class="disclaimer-text"><strong>MEDICAL DISCLAIMER:</strong> MediScan AI is for informational purposes
-                only. It is not a substitute for professional medical advice, diagnosis, or treatment.</p>
-        </div>
-    </footer>
+    {% include 'footer.html' %}
 
     <script src="{{ url_for('static', filename='js/main.js') }}"></script>
     <script>

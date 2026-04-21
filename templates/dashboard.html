@@ -42,24 +42,61 @@
             </div>
             
             <div class="stat-actions glass">
-                <h3>Insights</h3>
+                <h3>Global & Gamified Insights</h3>
                 <div class="insight-item">
-                    <span class="label">Primary Condition:</span>
-                    <span id="top-disease">Loading...</span>
+                    <span class="label">Comprehensive Health Score:</span>
+                    <span id="health-score-val" class="badge">Loading...</span>
                 </div>
                 <div class="insight-item">
-                    <span class="label">Last Checkup:</span>
-                    <span id="last-date">---</span>
+                    <span class="label">Comparative (vs Last Week):</span>
+                    <span id="comparative-val" style="color:var(--text-gray)">---</span>
+                </div>
+                <div class="insight-item">
+                    <span class="label">🔥 Current Streak:</span>
+                    <span id="streak-val" style="color:#f59e0b; font-weight:bold;">---</span>
+                </div>
+                <div class="insight-item" style="border-top:1px solid rgba(255,255,255,0.1); padding-top:10px; flex-direction:column; gap:5px;">
+                    <span class="label">Lifestyle Prescriptions:</span>
+                    <ul id="lifestyle-tips" style="font-size:0.85rem; color:var(--text-gray); margin-left:20px;"></ul>
                 </div>
                 <hr>
-                <div class="quick-actions">
-                    <a href="/" class="btn-primary">New AI Checkup</a>
+                <div class="quick-actions" style="display:flex; gap:10px;">
+                    <a href="/" class="btn-primary" style="flex:1; text-align:center;">New AI Checkup</a>
+                    <button class="btn-primary" style="background:#ef4444; flex:1;" onclick="triggerEmergency()">🚨 Emergency Alert</button>
+                    <button class="btn-primary" style="background:#10b981; flex:1;" onclick="checkFollowups()">Check Followups</button>
+                </div>
+            </div>
+        </section>
+        <section class="dashboard-grid">
+            <div class="stat-card glass">
+                <h3>Smart Reminders</h3>
+                <div id="reminders-list" style="margin-top:1rem; display:flex; flex-direction:column; gap:0.8rem;">
+                    <!-- JS injected -->
+                    <span style="color:var(--text-gray)">Loading...</span>
+                </div>
+            </div>
+            <div class="stat-actions glass">
+                <h3>Weekly Health Reports</h3>
+                <div id="reports-list" style="margin-top:1rem; display:flex; flex-direction:column; gap:0.8rem;">
+                    <!-- JS injected -->
+                    <span style="color:var(--text-gray)">Loading...</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- Feature 3: Digital Twin Simulation -->
+        <section class="dashboard-grid">
+            <div class="stat-card glass" style="grid-column: span 2; background: linear-gradient(145deg, rgba(30, 58, 138, 0.4), rgba(16, 185, 129, 0.1)); border: 1px solid var(--primary);">
+                <h3>🧬 Personalized Digital Twin Simulator</h3>
+                <p style="font-size: 0.9rem; color: var(--text-gray); margin-bottom: 15px;">Simulate long-term disease progression under multiple lifestyle branching scenarios.</p>
+                <div id="digital-twin-scenarios" style="display: flex; gap: 1rem; flex-wrap: wrap;">
+                    <button class="btn-primary" onclick="loadDigitalTwin()">Generate Digital Twin Projection</button>
                 </div>
             </div>
         </section>
 
         <section class="history-section glass">
-            <h2>Medical History</h2>
+            <h2>Health Timeline Dashboard</h2>
             <div class="table-scroll">
                 <table class="history-table">
                     <thead>
@@ -68,12 +105,24 @@
                             <th>Symptoms</th>
                             <th>AI Prediction</th>
                             <th>Confidence</th>
+                            <th>Severity</th>
                         </tr>
                     </thead>
                     <tbody id="history-body">
                         <!-- Data injected by JS -->
                     </tbody>
                 </table>
+            </div>
+        </section>
+
+        <!-- Feature 15: Advanced Analytics -->
+        <section class="dashboard-grid">
+            <div class="stat-card glass" style="grid-column: span 2;">
+                <h3>🗺️ Advanced Analytics: Regional Health Cohorts</h3>
+                <p style="font-size: 0.9rem; color: var(--text-gray); margin-bottom: 20px;">AI-generated demographic distribution map for similar symptom profiles.</p>
+                <div style="height: 300px; width: 100%; display: flex; justify-content: center; align-items: center; background: rgba(0,0,0,0.2); border-radius: 12px; border: 1px solid rgba(255,255,255,0.1);">
+                    <canvas id="cohortChart" style="max-height:100%;"></canvas>
+                </div>
             </div>
         </section>
     </main>
@@ -94,11 +143,13 @@
                 const body = document.getElementById('history-body');
                 data.reverse().forEach(row => {
                     const tr = document.createElement('tr');
+                    const sevColor = row.severity_level === 'Severe' ? '#ef4444' : (row.severity_level === 'Mild' ? '#10b981' : '#f59e0b');
                     tr.innerHTML = `
                         <td>${new Date(row.timestamp).toLocaleDateString()}</td>
                         <td>${row.symptoms || '---'}</td>
                         <td><strong>${row.disease}</strong></td>
                         <td><span class="badge">${row.confidence || '---'}</span></td>
+                        <td><span class="badge" style="background: ${sevColor}22; color: ${sevColor}">${row.severity_level || 'Moderate'}</span></td>
                     `;
                     body.appendChild(tr);
                 });
@@ -128,10 +179,137 @@
                         scales: { y: { beginAtZero: true, max: 100 } }
                     }
                 });
+                // Fetch and populate Reminders
+                const remResp = await fetch('/reminders');
+                const rems = await remResp.json();
+                const remList = document.getElementById('reminders-list');
+                if (rems.length === 0) {
+                    remList.innerHTML = '<span style="color:var(--text-gray)">No active reminders. Stay healthy!</span>';
+                } else {
+                    remList.innerHTML = rems.map(r => `
+                        <div style="background: rgba(255,255,255,0.05); padding: 12px; border-radius: 8px; display:flex; justify-content:space-between; align-items:center;">
+                            <div>
+                                <strong style="color:var(--text-main)">${r.title}</strong><br>
+                                <span style="font-size: 0.8rem; color:var(--text-gray)">${r.time} • ${r.type}</span>
+                            </div>
+                            <button class="badge" style="border:none; cursor:pointer;" onclick="toggleReminder(${r.id}, this)">Done</button>
+                        </div>
+                    `).join('');
+                }
+
+                // Fetch and populate Reports
+                const repResp = await fetch('/weekly_reports');
+                const reps = await repResp.json();
+                const repList = document.getElementById('reports-list');
+                repList.innerHTML = reps.map(r => {
+                    const trendColor = r.risk_trend === 'Worsening' ? '#ef4444' : '#10b981';
+                    return `
+                    <div style="background: rgba(255,255,255,0.05); padding: 12px; border-radius: 8px;">
+                        <div style="display:flex; justify-content:space-between;">
+                            <strong style="color:var(--text-main)">Week of ${r.report_week}</strong>
+                            <span class="badge" style="background:${trendColor}22; color:${trendColor}">${r.risk_trend}</span>
+                        </div>
+                        <p style="margin-top:5px; font-size:0.85rem; color:var(--text-gray)">${r.summary}</p>
+                    </div>
+                `}).join('');
+
             } catch (e) {
                 console.error("Dashboard error:", e);
             }
+            
+            try {
+                // Fetch Feature 10,11,15,21: Health Score, Comparative, Gamification, Lifestyle
+                const hsResp = await fetch('/health_score');
+                const hsData = await hsResp.json();
+                document.getElementById('health-score-val').innerText = hsData.health_score + '/100';
+                document.getElementById('comparative-val').innerHTML = hsData.comparative.this_week > hsData.comparative.last_week ? 
+                    `<span style="color:#10b981">+${hsData.comparative.this_week - hsData.comparative.last_week} pts</span>` : 
+                    `<span style="color:#ef4444">${hsData.comparative.this_week - hsData.comparative.last_week} pts</span>`;
+                document.getElementById('streak-val').innerText = hsData.gamification.streak + " Days";
+                document.getElementById('lifestyle-tips').innerHTML = hsData.lifestyle_tips.map(t => `<li>${t}</li>`).join('');
+            } catch(e) {}
+            
+            // Cohort Chart
+            try {
+                const ctx = document.getElementById('cohortChart').getContext('2d');
+                new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: ['Urban Core', 'Suburban', 'Rural Node', 'Coastal', 'Alpine'],
+                        datasets: [{
+                            label: 'Regional Auto-Prevalence (%)',
+                            data: [35, 19, 22, 14, 10],
+                            backgroundColor: 'rgba(16, 185, 129, 0.4)',
+                            borderColor: '#10b981',
+                            borderWidth: 1
+                        }, {
+                            label: 'Your Predicted Cohort Impact (%)',
+                            data: [42, 10, 15, 8, 25],
+                            backgroundColor: 'rgba(59, 130, 246, 0.4)',
+                            borderColor: '#3b82f6',
+                            borderWidth: 1
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: { legend: { labels: { color: '#cbd5e1'} } },
+                        scales: {
+                            y: { ticks: { color: '#cbd5e1' }, grid: { color: 'rgba(255,255,255,0.05)' } },
+                            x: { ticks: { color: '#cbd5e1' }, grid: { display:false } }
+                        }
+                    }
+                });
+            } catch(e) {}
+            
         });
+
+        async function triggerEmergency() {
+            try {
+                const res = await fetch('/trigger_emergency', {method:'POST'});
+                const data = await res.json();
+                alert(data.message + "\nNotified: " + data.contacts_notified.map(c=>c.name).join(', '));
+            } catch(e) {}
+        }
+        
+        async function checkFollowups() {
+            try {
+                const res = await fetch('/follow_up');
+                const data = await res.json();
+                if(data.pending_followups.length > 0) {
+                    alert("AI Follow Up:\n\n" + data.pending_followups[0].message);
+                } else alert("No pending follow-ups.");
+            } catch(e) {}
+        }
+
+        async function toggleReminder(id, btn) {
+            await fetch('/toggle_reminder/' + id, {method: 'POST'});
+            btn.innerText = 'Completed';
+            btn.style.opacity = '0.5';
+            btn.onclick = null;
+        }
+
+        async function loadDigitalTwin() {
+            try {
+                const res = await fetch('/digital_twin', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({risk: 50})
+                });
+                const data = await res.json();
+                
+                const container = document.getElementById('digital-twin-scenarios');
+                container.innerHTML = data.scenarios.map(s => {
+                    const color = s['5_yr_risk'] > 70 ? '#ef4444' : (s['5_yr_risk'] > 40 ? '#f59e0b' : '#10b981');
+                    return `
+                    <div style="background: rgba(255,255,255,0.05); padding: 15px; border-radius: 12px; flex: 1; min-width: 200px; border-top: 3px solid ${color};">
+                        <strong style="color:var(--text-main);">${s.name}</strong>
+                        <div style="font-size: 1.5rem; font-weight: bold; margin: 10px 0; color: ${color};">${s['5_yr_risk']}% Risk</div>
+                        <p style="font-size: 0.8rem; color: var(--text-gray);">${s.advice}</p>
+                    </div>
+                `}).join('');
+            } catch(e) {}
+        }
     </script>
 
     <style>

@@ -48,6 +48,8 @@
             <a href="/dashboard">Dashboard</a>
             <a href="/system_intelligence">Intelligence</a>
             <a href="/doctors">Doctors</a>
+            <a href="#" onclick="alert('Family Mode selected: Switching to Child Profile...');">👨‍👩‍👧 Family</a>
+            <a href="#" onclick="startAIQuiz()">🧠 Health Quiz</a>
         </div>
     </nav>
 
@@ -108,6 +110,7 @@
                 </div>
 
                 <div class="divider"><span>OR</span></div>
+                <button class="btn-outline" style="width:100%; margin-bottom: 2rem; padding: 1rem; color: var(--text-main); font-weight: bold;" onclick="startGuidedFlow()">🩺 Start Step-by-Step AI Symptom Checker Flow</button>
 
                 <label for="symptom-search">Select specific symptoms:</label>
                 <div class="search-box">
@@ -150,6 +153,7 @@
                         <button class="btn-sm btn-outline" onclick="speakPrediction()">🔊 Read Aloud</button>
                         <button class="btn-sm btn-outline" id="emergency-alert-btn" style="display:none; color: #ef4444;">🚨 Emergency Protocol</button>
                         <div class="confidence-badge" id="confidence-val">0% Confidence</div>
+                        <div class="confidence-badge" id="triage-val" style="background: rgba(245, 158, 11, 0.2); color: #f59e0b; display:none;">Triage: Pending</div>
                         <button class="btn-sm btn-primary" onclick="downloadReport()" style="background: #2563eb; color: white;">📄 Get Digital Report</button>
                     </div>
                     <div id="anomaly-alert" class="badge low hidden">Rare Case Flagged</div>
@@ -211,6 +215,24 @@
                         </div>
                     </div>
 
+                    <div class="treatment-simulator-card card" style="grid-column: span 2; border: 1px solid var(--primary);">
+                        <h3 style="color:var(--primary);">⚕️ AI Treatment Consequence Simulator</h3>
+                        <p class="input-hint">Simulate recovery trajectory based on clinical treatment intensity and patient compliance.</p>
+                        <div style="display:flex; justify-content:space-between; gap:20px; text-align: left; margin-top:20px;">
+                            <div style="flex:1;">
+                                <label style="font-size:0.9rem;">Treatment Intensity (%)</label>
+                                <input type="range" id="sim-intensity" min="10" max="100" value="50" style="width:100%;">
+                                <label style="font-size:0.9rem; margin-top:10px; display:block;">Patient Compliance (%)</label>
+                                <input type="range" id="sim-compliance" min="10" max="100" value="70" style="width:100%;">
+                                <button class="btn-sm btn-outline" style="margin-top:15px; border-color:#10b981; color:#10b981;" onclick="runTreatmentSim()">Run Clinical Simulation</button>
+                            </div>
+                            <div style="flex:1; background:rgba(0,0,0,0.2); padding:15px; border-radius:8px;">
+                                <h4 style="margin-bottom:10px; color:var(--secondary);">Simulation Results:</h4>
+                                <div id="sim-results" style="font-size:0.9rem; color:var(--text-gray);">Adjust sliders and run simulation.</div>
+                            </div>
+                        </div>
+                    </div>
+
                     <div class="medications-card card">
                         <h3>Common Medications</h3>
                         <ul id="medications-list"></ul>
@@ -224,11 +246,21 @@
                         </div>
                     </div>
 
-                    <div class="xai-card card">
-                        <h3>ML Explainability (XAI)</h3>
-                        <p class="input-hint">Impact of your top symptoms on this diagnosis:</p>
-                        <div id="xai-drivers-list" class="xai-list">
-                            <!-- Drivers injected here -->
+                    <div class="xai-card card" style="grid-column: span 2;">
+                        <h3>ML Explainability (XAI) & Hybrid Ensemble</h3>
+                        <div style="display:flex; gap: 20px; text-align:left; margin-top:15px;">
+                            <div style="flex:1;">
+                                <p class="input-hint">Model Feature Weights (Gini Extraction):</p>
+                                <div id="xai-drivers-list" class="xai-list" style="margin-bottom:15px;">
+                                    <!-- Drivers injected here -->
+                                </div>
+                            </div>
+                            <div style="flex:1; border-left: 1px solid rgba(255,255,255,0.1); padding-left: 20px;">
+                                <p class="input-hint">Suggested Clinical Labs:</p>
+                                <ul id="lab-test-list" style="margin-bottom:15px; font-size:0.9rem; color:var(--secondary); list-style:square inside;"></ul>
+                                <p class="input-hint">Multi-Agent Ensemble Voting:</p>
+                                <div id="ensemble-votes" style="font-size:0.85rem; color:#cbd5e1;"></div>
+                            </div>
                         </div>
                     </div>
 
@@ -295,7 +327,10 @@
                             </div>
                         </div>
                         <div class="ai-counsel-card" style="margin-top: 20px; background: rgba(59, 130, 246, 0.1);">
-                            <h4>AI Insight</h4>
+                            <div style="display:flex; justify-content:space-between; align-items:center;">
+                                <h4>AI Insight</h4>
+                                <button class="btn-sm btn-secondary" onclick="simplifyMedicalReport()">Simplify Clinical Jargon</button>
+                            </div>
                             <p id="report-ai-analysis"></p>
                         </div>
                     </div>
@@ -316,51 +351,7 @@
         </section>
     </main>
 
-    <!-- 🌐 Global Site Footer -->
-    <footer class="site-footer">
-        <div class="footer-content">
-            <div class="footer-brand">
-                <div class="logo">MediScan <span>AI</span></div>
-                <p>Empowering global health through accessible, high-fidelity artificial intelligence diagnostics and symptom analysis.</p>
-                <div class="trust-badges">
-                    <span class="badge">SECURED BY AI</span>
-                    <span class="badge">HIPAA READY</span>
-                </div>
-            </div>
-            
-            <div class="footer-section">
-                <h4>Quick Links</h4>
-                <ul class="footer-links">
-                    <li><a href="/">Symptom Checker</a></li>
-                    <li><a href="/dashboard">Personal Health Vault</a></li>
-                    <li><a href="/doctors">Global Specialists</a></li>
-                </ul>
-            </div>
-
-            <div class="footer-section">
-                <h4>Support</h4>
-                <ul class="footer-links">
-                    <li><a href="javascript:void(0)" onclick="toggleSupport()">Help Center</a></li>
-                    <li><a href="javascript:void(0)" onclick="toggleSupport()">Privacy Policy</a></li>
-                    <li><a href="javascript:void(0)" onclick="toggleSupport()">Terms of Service</a></li>
-                </ul>
-            </div>
-
-            <div class="footer-section">
-                <h4>Status</h4>
-                <ul class="footer-links">
-                    <li><a href="#">AI Engine: v2.4.0</a></li>
-                    <li><a href="#">Model Confidence: 94.2%</a></li>
-                    <li><a href="#">Cloud Sync: Online</a></li>
-                </ul>
-            </div>
-        </div>
-
-        <div class="footer-bottom">
-            <p>&copy; 2026 MediScan AI. All rights reserved.</p>
-            <p class="disclaimer-text"><strong>MEDICAL DISCLAIMER:</strong> MediScan AI is for informational purposes only. It is not a substitute for professional medical advice, diagnosis, or treatment. Always seek the advice of your physician or other qualified health provider with any questions you may have regarding a medical condition.</p>
-        </div>
-    </footer>
+    {% include 'footer.html' %}
 
     <script src="{{ url_for('static', filename='js/main.js') }}"></script>
     <script>
@@ -422,9 +413,97 @@
         </div>
         <div class="chat-input-area">
             <input type="text" id="chat-input" placeholder="Ask about symptoms, precautions..." onkeypress="if(event.key==='Enter') sendChatMessage()">
+            <button class="chat-send-btn" onclick="startVoiceChat()" title="Voice Input">🎙️</button>
             <button class="chat-send-btn" onclick="sendChatMessage()">➤</button>
         </div>
     </div>
+    
+    <script>
+    async function startAIQuiz() {
+        try {
+            const res = await fetch('/quiz');
+            const data = await res.json();
+            const ans = prompt("AI Health Quiz:\\n\\n" + data.question + "\\n\\nOptions:\\n1) " + data.options[0] + "\\n2) " + data.options[1] + "\\n3) " + data.options[2] + "\\n4) " + data.options[3] + "\\n\\nEnter number (1-4):");
+            if(ans - 1 === data.answer) alert("Correct! +20 Points to Health Score streaks!");
+            else alert("Incorrect. The correct answer was: " + data.options[data.answer]);
+        } catch(e) { alert("Failed to fetch quiz"); }
+    }
+    
+    async function startGuidedFlow() {
+        let userSymptoms = [];
+        const q1 = prompt("AI Symptom Checker (Step 1 of 3):\\nLet's go step-by-step. Do you have any pain or ache? (e.g., headache, stomach ache, none)");
+        if(q1 && q1.toLowerCase() !== 'none') userSymptoms.push(q1.trim().replace(' ', '_'));
+
+        const q2 = prompt("AI Symptom Checker (Step 2 of 3):\\nDo you have a fever or chills? (yes/no)");
+        if(q2 && q2.toLowerCase() === 'yes') userSymptoms.push('high_fever');
+
+        const q3 = prompt("AI Symptom Checker (Step 3 of 3):\\nAny nausea, fatigue, or breathing issues? Please list or type 'none'.");
+        if(q3 && q3.toLowerCase() !== 'none') userSymptoms.push(q3.trim().replace(' ', '_'));
+
+        if(userSymptoms.length > 0) {
+            document.getElementById('symptom-description').value = "Guided Flow Extracted: " + userSymptoms.join(', ');
+            document.getElementById('predict-btn').click();
+        } else {
+            alert("No significant symptoms detected. Aborting guided flow.");
+        }
+    }
+
+    function startVoiceChat() {
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        if(!SpeechRecognition) return alert("Voice Recognition unsupported on this browser");
+        const rec = new SpeechRecognition();
+        rec.start();
+        rec.onresult = e => {
+            document.getElementById('chat-input').value = e.results[0][0].transcript;
+            // Provide speech synthesis readout response inside main sendChatMessage execution
+            if(window.sendChatMessage) window.sendChatMessage();
+        };
+    }
+
+    async function runTreatmentSim() {
+        const intensity = document.getElementById('sim-intensity').value;
+        const compliance = document.getElementById('sim-compliance').value;
+        document.getElementById('sim-results').innerHTML = "Simulating clinical trajectory...";
+        try {
+            const res = await fetch('/treatment_simulator', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ condition: window.lastResult ? window.lastResult.disease : 'General', intensity: intensity, compliance: compliance })
+            });
+            const data = await res.json();
+            document.getElementById('sim-results').innerHTML = `
+                <div style="color:#10b981; font-weight:bold; font-size:1.1rem; margin-bottom:5px;">${data.estimated_recovery_days} Days Recovery</div>
+                <div style="margin-bottom:5px;">Vitals Stability: ${data.vital_stability_index} / 100</div>
+                <div style="margin-bottom:5px;">Risk Reduction: ${data.risk_reduction_pct}%</div>
+                <div style="color:var(--text-main); font-size:0.8rem; margin-top:10px;">${data.recommendation}</div>
+            `;
+        } catch(e) { document.getElementById('sim-results').innerHTML = "Simulation failed."; }
+    }
+
+    async function simplifyMedicalReport() {
+        const textNode = document.getElementById('report-ai-analysis');
+        if(!textNode.innerText) return;
+        const originalText = textNode.innerText;
+        textNode.innerText = "Processing clinical linguistics...";
+        try {
+            const res = await fetch('/simplify_report', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ text: originalText })
+            });
+            const data = await res.json();
+            textNode.innerHTML = `
+                <div style="background: rgba(16, 185, 129, 0.1); padding: 10px; border-left: 3px solid #10b981;">
+                    <strong>Simplified Summary:</strong><br>${data.simple_summary}
+                </div>
+                <div style="margin-top:10px; font-size:0.85rem; display:flex; gap:10px;">
+                    <div style="color:#ef4444;"><strong>Flags:</strong> ${data.dangerous_flags.join(', ')}</div>
+                    <div style="color:#10b981;"><strong>Normal:</strong> ${data.normal_flags.join(', ')}</div>
+                </div>
+            `;
+        } catch(e) { textNode.innerText = originalText; }
+    }
+    </script>
 </body>
 
 </html>

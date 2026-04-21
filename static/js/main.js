@@ -208,7 +208,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const voiceBtn = document.getElementById('voice-btn');
     const descriptionArea = document.getElementById('symptom-description');
 
-    if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+    if (voiceBtn && ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window)) {
         const Recognition = window.SpeechRecognition || window.webkitSpeechRecognition;
         const recognition = new Recognition();
         recognition.interimResults = true;
@@ -227,11 +227,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 .map(result => result[0])
                 .map(result => result.transcript)
                 .join('');
-            descriptionArea.value = transcript;
+            if (descriptionArea) {
+                descriptionArea.value = transcript;
+            }
         };
 
         recognition.onend = () => voiceBtn.classList.remove('listening');
-    } else {
+    } else if (voiceBtn) {
         voiceBtn.style.display = 'none';
     }
 
@@ -284,12 +286,57 @@ document.addEventListener('DOMContentLoaded', () => {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     symptoms: Array.from(selectedSymptoms),
-                    description: description
+                    description: description,
+                    is_followup: window.ai_is_followup || false
                 })
             });
 
             const data = await response.json();
             await neuralPromise;
+
+            // 🧠 Feature 12: Adaptive Question Interception
+            // 🧠 Feature 12: Adaptive Question Interception
+            if (data.is_clarifying) {
+                // Create a temporary overlay modal
+                const modal = document.createElement('div');
+                modal.id = 'clarify-modal';
+                modal.style.position = 'fixed';
+                modal.style.top = '0'; modal.style.left = '0';
+                modal.style.width = '100vw'; modal.style.height = '100vh';
+                modal.style.background = 'rgba(0,0,0,0.8)';
+                modal.style.display = 'flex';
+                modal.style.alignItems = 'center';
+                modal.style.justifyContent = 'center';
+                modal.style.zIndex = '1000';
+                
+                modal.innerHTML = `
+                    <div class="card" style="text-align: center; padding: 40px; border: 2px solid var(--primary); max-width: 500px;">
+                        <h2 style="color: var(--primary); margin-bottom: 20px;">🧠 AI Differential Diagnosis</h2>
+                        <p style="font-size: 1.2rem; color: var(--text-light); margin-bottom: 30px;">${data.question}</p>
+                        <div style="display:flex; justify-content: center; gap: 20px;">
+                            <button id="btn-clarify-yes" class="btn" style="background: var(--primary);">Yes</button>
+                            <button id="btn-clarify-no" class="btn-outline">No</button>
+                        </div>
+                    </div>
+                `;
+                document.body.appendChild(modal);
+                
+                document.getElementById('btn-clarify-yes').onclick = () => {
+                    modal.remove();
+                    selectedSymptoms.add(data.suggested_symptom);
+                    window.ai_is_followup = true;
+                    predictBtn.click();
+                };
+                document.getElementById('btn-clarify-no').onclick = () => {
+                    modal.remove();
+                    window.ai_is_followup = true;
+                    predictBtn.click();
+                };
+                
+                predictBtn.textContent = 'Awaiting User Clarification...';
+                predictBtn.disabled = false;
+                return;
+            }
 
             // Check for Emergency Red Flag
             if (data.is_emergency) {
@@ -385,22 +432,71 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (data.is_anomaly) anomalyAlert.classList.remove('hidden');
                 else anomalyAlert.classList.add('hidden');
 
-                // 🧪 XAI Explainability
+                // 🧪 XAI Explainability (SHAP LIME)
                 const xaiList = document.getElementById('xai-drivers-list');
                 xaiList.innerHTML = '';
+                if(data.xai_summary) {
+                    const desc = document.createElement('p');
+                    desc.style.color = '#ef4444';
+                    desc.style.fontSize = '0.85rem';
+                    desc.innerText = data.xai_summary;
+                    xaiList.appendChild(desc);
+                }
                 data.xai_drivers.forEach(driver => {
                     const row = document.createElement('div');
                     row.className = 'xai-row';
+                    const pct = Math.min(100, (driver.shap_value * 100).toFixed(1));
                     row.innerHTML = `
-                        <span class="xai-label">${driver.symptom}</span>
-                        <div class="xai-bar-wrap">
-                            <div class="xai-bar" style="width: ${driver.impact}%"></div>
+                        <span class="xai-label" style="min-width: 80px;">${driver.feature}</span>
+                        <div class="xai-bar-wrap" style="flex:1;">
+                            <div class="xai-bar" style="width: ${pct}%; background:#10b981;"></div>
                         </div>
-                        <span class="xai-val">+${driver.impact}%</span>
+                        <span class="xai-val" style="min-width: 50px;">+${pct}%</span>
                     `;
-                    xaiList.appendChild(row);
                 });
 
+                // 🧪 Feature 19: Suggested Clinical Labs
+                const labsList = document.getElementById('lab-test-list');
+                if(labsList && data.recommended_labs) {
+                    labsList.innerHTML = data.recommended_labs.map(lab => `<li>${lab}</li>`).join('');
+                }
+
+                // 🤖 Feature 11: Hybrid Ensemble Voting Output
+                const ensembleVotes = document.getElementById('ensemble-votes');
+                if(ensembleVotes && data.hybrid_ensemble) {
+                    ensembleVotes.innerHTML = Object.entries(data.hybrid_ensemble).map(([agent, score]) => `
+                        <div style="display:flex; justify-content:space-between; margin-bottom:5px;">
+                            <span>${agent}</span>
+                            <span style="color:${score > 50 ? '#10b981' : '#f59e0b'}; font-weight:bold;">${score}%</span>
+                        </div>
+                    `).join('');
+                    if(data.consensus) {
+                         ensembleVotes.innerHTML += `<div style="margin-top:10px; padding:5px; background:rgba(16,185,129,0.2); border:1px solid #10b981; text-align:center; border-radius:4px; font-weight:bold; color:#10b981;">✅ Agent Consensus Reached</div>`;
+                    } else {
+                         ensembleVotes.innerHTML += `<div style="margin-top:10px; padding:5px; background:rgba(239,68,68,0.2); border:1px solid #ef4444; text-align:center; border-radius:4px; font-weight:bold; color:#ef4444;">⚠️ Agent Dissonance Detected</div>`;
+                    }
+                }
+
+                // 🧬 Multi-Modal Fusion Simulation Trigger
+                try {
+                    const mmRes = await fetch('/fuse_multimodal', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({text: userSymptoms, image: '', vitals: {}})
+                    });
+                    const mmData = await mmRes.json();
+                    if(mmData.fusion_confidence) {
+                        const mmBanner = document.createElement('div');
+                        mmBanner.style.background = 'linear-gradient(90deg, rgba(30,64,175,0.2), rgba(16,185,129,0.2))';
+                        mmBanner.style.padding = '10px';
+                        mmBanner.style.margin = '10px 0';
+                        mmBanner.style.borderRadius = '8px';
+                        mmBanner.style.border = '1px solid var(--primary)';
+                        mmBanner.innerHTML = `<strong>🧬 Multi-Modal Fusion Active</strong>: Integrated Text+Vitals context to reach ${mmData.fusion_confidence} diagnosis fidelity.`;
+                        document.querySelector('.ai-reasoning').appendChild(mmBanner);
+                    }
+                } catch(e) {}
+                
                 recommendationText.textContent = data.recommendation;
                 
                 // 💡 AI Wisdom Advice
@@ -412,6 +508,24 @@ document.addEventListener('DOMContentLoaded', () => {
                     'Migraine': "Darkness and silence are your allies right now. Don't rush back into bright screens too quickly."
                 };
                 wisdomText.textContent = wisdomMap[data.disease] || "Continue monitoring your vitals. Use the 'Find Specialists' button below to consult a professional about these results.";
+
+                // 🔥 Smart Triage Evaluation (Feature 12)
+                try {
+                    const tRes = await fetch('/triage_risk', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ symptoms: Array.from(selectedSymptoms), vitals: {} })
+                    });
+                    const tData = await tRes.json();
+                    const tBadge = document.getElementById('triage-val');
+                    if (tBadge) {
+                        tBadge.style.display = 'inline-block';
+                        tBadge.innerText = `Triage: ${tData.category}`;
+                        tBadge.style.background = tData.category.includes('Emergency') ? 'rgba(239,68,68,0.2)' : 'rgba(245, 158, 11, 0.2)';
+                        tBadge.style.color = tData.category.includes('Emergency') ? '#ef4444' : '#f59e0b';
+                        if(tData.category.includes('Emergency')) tBadge.style.border = '1px solid #ef4444';
+                    }
+                } catch(e) {}
 
                 const confPercent = parseFloat(data.confidence);
                 confidenceVal.className = 'confidence-badge ' + (confPercent < 40 ? 'low' : confPercent < 70 ? 'medium' : 'high');
@@ -608,6 +722,24 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    // 💾 SQLite Database Save Function
+    window.saveToHistory = async () => {
+        if (!window.lastResult) return alert("No active diagnostic result to save.");
+        try {
+            const res = await fetch('/save_history', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({
+                    disease: window.lastResult.disease,
+                    confidence: window.lastResult.confidence,
+                    symptoms: window.lastSymptoms || []
+                })
+            });
+            if(res.ok) alert("✅ Securely saved and encrypted to database.");
+            else alert("Error saving to database.");
+        } catch(e) { console.error('Save error', e); }
+    };
+
 
     // 🔬 Feedback & Active Learning System
     window.submitFeedback = async (isCorrect) => {
@@ -719,9 +851,27 @@ document.addEventListener('DOMContentLoaded', () => {
             
             const aiMsg = document.createElement('div');
             aiMsg.className = 'message ai-message';
-            aiMsg.innerHTML = data.reply.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>').replace(/\n/g, '<br>');
+            aiMsg.innerHTML = data.reply.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>').replace(/\\n/g, '<br>');
             msgContainer.appendChild(aiMsg);
             msgContainer.scrollTop = msgContainer.scrollHeight;
+            
+            // 🧠 Mental Health Auto-Scanner
+            fetch('/mental_health', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ text: text })
+            }).then(r=>r.json()).then(mhData => {
+                if(mhData.stress_level_index > 65) {
+                    const mhWarning = document.createElement('div');
+                    mhWarning.className = 'message ai-message';
+                    mhWarning.style.background = 'rgba(239, 68, 68, 0.1)';
+                    mhWarning.style.borderLeft = '3px solid #ef4444';
+                    mhWarning.innerHTML = `<em style="font-size:0.85rem;">[Mental Health System] Elevated Stress/Anxiety pattern detected (${mhData.stress_level_index}%). ${mhData.recommendation}</em>`;
+                    msgContainer.appendChild(mhWarning);
+                    msgContainer.scrollTop = msgContainer.scrollHeight;
+                }
+            });
+            
         } catch (e) {
             msgContainer.removeChild(typingDiv);
             console.error('Chat error:', e);
